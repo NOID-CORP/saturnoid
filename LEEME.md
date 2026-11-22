@@ -89,6 +89,7 @@ node pruebas/probar.mjs       # celular 390×844: portada, las 4 clases, pase, u
 node pruebas/probar.mjs --escritorio prueba_0007
 node pruebas/probar.mjs --sin3d prueba_0120     # plan B sin WebGL
 node pruebas/carga.mjs        # tiempos con 4G simulado
+node pruebas/respuesta.mjs    # del toque en "Buscar" al vuelo, con procesador de celular simulado
 node pruebas/fotos.mjs        # regenera las imágenes de portada (assets/img/) desde la escena
 ```
 

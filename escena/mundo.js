@@ -57,6 +57,11 @@ export function crearMundo({ canvas, calidad = 'media', ancho, alto }) {
     if (Q.sombras && i < 2) { s.castShadow = true; s.shadow.mapSize.set(2048, 2048); s.shadow.bias = -0.0004; }
   });
 
+  // Luces fijas de los interiores (apagadas en la portada). Siempre existen: así el número de luces no cambia
+  // y los materiales no se recompilan al entrar a un asiento.
+  const calentados = [];
+  const lucesInterior = [0, 1].map(() => { const l = new THREE.PointLight('#ffffff', 0, 9, 2); nave.cuerpo.add(l); return l; });
+
   let composer = null, bloom = null;
   if (Q.bloom) {
     composer = new EffectComposer(renderer);
@@ -119,16 +124,34 @@ export function crearMundo({ canvas, calidad = 'media', ancho, alto }) {
       const escalaPuntos = (H * px * 0.5) / Math.tan(THREE.MathUtils.degToRad(camara.fov) / 2);
       nave.actualizar(t, nivel, { escalaPuntos, adentro });
       interior?.actualizar(t);
+      // los nametags se ven a través de las paredes: solo aparecen cuando la cámara ya está adentro
+      if (interior) { const k = Math.min(1, Math.max(0, (adentro - 0.7) / 0.3)); for (const s of interior.etiquetas) { s.visible = k > 0; s.material.opacity = k; } }
       ponerCamara(cam, sacudida, t);
       dibujar();
     },
     prepararAsiento(clase, opciones) {
       this.quitarAsiento();
-      interior = crearInterior(clase, opciones);
+      interior = crearInterior(clase, { ...opciones, luces: lucesInterior });
       nave.cuerpo.add(interior.grupo);
       return interior;
     },
     quitarAsiento() { interior?.liberar(); interior = null; },
+    // Prepara de antemano los programas de los interiores (cuando la página está quieta), para que el primer
+    // vuelo no se congele compilando. No se ve nada: los nametags van transparentes y lo demás queda dentro del casco.
+    async precalentar() {
+      const muestras = { cabina: 'C-02', anillo: 'A-03', orbita: 'O-03B', turista: 'T-003B' };
+      for (const [clase, asiento] of Object.entries(muestras)) {
+        if (interior) return; // alguien ya buscó: no estorbar
+        const ocupantes = new Map(['C-03', 'A-02', 'O-02B', 'T-002B'].map((c) => [c, { usuario: 'x' }]));
+        const tmp = crearInterior(clase, { asiento, usuario: 'x', ocupantes, info: {}, luces: lucesInterior });
+        tmp.grupo.traverse((n) => { if (n.isSprite) n.material.opacity = 0; });
+        nave.cuerpo.add(tmp.grupo);
+        try { await (renderer.compileAsync ? renderer.compileAsync(escena, camara) : renderer.compile(escena, camara)); } catch { /* sin compilación previa */ }
+        // sin liberar sus materiales: mientras existan, three.js guarda los programas compilados para el interior real
+        tmp.grupo.removeFromParent(); for (const l of lucesInterior) l.intensity = 0; calentados.push(tmp);
+        await new Promise((ok) => setTimeout(ok, 60));
+      }
+    },
     // Copia del último cuadro (para el pase de abordar). Llamar justo después de cuadro().
     // Foto para el pase: se dibuja con su propio encuadre y tamaño, se copia en ese mismo instante
     // (el lienzo no guarda el cuadro anterior) y se devuelve el tamaño de la pantalla.

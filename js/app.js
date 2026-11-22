@@ -18,7 +18,7 @@ let vuelo = null, tVuelo0 = 0, tLlegada = 0;
 let nivelVis = 0, nivelObj = 0;
 let actual = null;      // pasajero en pantalla
 const arrastre = { yaw: 0, pitch: 0, activo: false };
-const DUR_VUELO = 6.4;
+const DUR_VUELO = 5.6;
 
 // ---------- datos ----------
 async function cargarResumen() {
@@ -178,7 +178,12 @@ function bucle(ahora) {
   const dt = ahora - ultimo; ultimo = ahora;
   if (cuadros > 30 && cuadros < 400 && dt > 55) lentos++;
   if (lentos > 40 && !mundo.bajado) { mundo.bajado = true; mundo.renderer.setPixelRatio(1); ajustar(); }
-  if (primerCuadro) { primerCuadro = false; document.body.classList.add('con3d'); document.body.classList.remove('cargando'); window.__saturnoidListo = true; }
+  if (primerCuadro) {
+    primerCuadro = false; document.body.classList.add('con3d'); document.body.classList.remove('cargando'); window.__saturnoidListo = true;
+    // con la página quieta, dejar listos los interiores para que el primer vuelo no se congele
+    const luego = window.requestIdleCallback || ((f) => setTimeout(f, 1200));
+    if (!MODO_FOTO) setTimeout(() => luego(() => mundo.precalentar().catch(() => {})), 1500);
+  }
 }
 const lerpFov = (p, a) => { const ini = a < 0.85 ? 58 : 42, fin = a < 0.85 ? 78 : 64; const k = Math.min(1, Math.max(0, (p - 0.55) / 0.45)); return ini + (fin - ini) * k; };
 
@@ -209,19 +214,48 @@ function enganchar(el) {
 }
 
 // ---------- buscador ----------
+// Se busca mientras la persona escribe: al tocar "Buscar", el asiento y los vecinos casi siempre ya llegaron.
+const consultas = new Map();
+function consultar(usuario) {
+  if (!consultas.has(usuario)) {
+    const pr = buscarPasajero(usuario).then(async (p) => ({ p, ocupantes: p ? await ocupantesCerca(p.asiento).catch(() => new Map()) : null }));
+    pr.catch(() => consultas.delete(usuario));
+    consultas.set(usuario, pr);
+    setTimeout(() => consultas.delete(usuario), 60000); // no guardar respuestas viejas
+  }
+  return consultas.get(usuario);
+}
+let espera = null;
+$('#usuario').addEventListener('input', () => {
+  clearTimeout(espera);
+  espera = setTimeout(() => { const u = normalizarUsuario($('#usuario').value); if (USUARIO_VALIDO.test(u) && u.length >= 3) consultar(u).catch(() => {}); }, 350);
+});
+
+// Aviso que sale apenas se toca "Buscar" (para que quede claro que ya te lleva).
+function aviso(linea1, linea2 = '', listo = false) {
+  const a = $('#abordando');
+  a.querySelector('.a1').textContent = linea1; a.querySelector('.a2').textContent = linea2;
+  a.classList.toggle('listo', listo); a.hidden = false;
+}
+const quitarAviso = (ms = 0) => setTimeout(() => { $('#abordando').hidden = true; }, ms);
+
 async function buscar(texto) {
   const usuario = normalizarUsuario(texto);
   const err = $('#error');
   err.hidden = true;
   if (!USUARIO_VALIDO.test(usuario)) { err.textContent = 'Escribe tu usuario de Instagram (letras, números, punto o guion bajo).'; err.hidden = false; return; }
   const boton = $('#buscador button'); boton.disabled = true; boton.textContent = 'Buscando…';
+  $('#usuario').blur();
+  aviso(`Buscando @${usuario}…`);
   try {
-    const p = await buscarPasajero(usuario);
-    if (!p) return sinAsiento(usuario);
-    const ocupantes = await ocupantesCerca(p.asiento).catch(() => new Map());
+    const { p, ocupantes } = await consultar(usuario);
+    if (!p) { quitarAviso(); return sinAsiento(usuario); }
     history.replaceState(null, '', `?u=${encodeURIComponent(usuario)}`);
+    aviso(`Asiento ${p.asiento} · ${CLASES[p.clase].nombre}`, mundo ? 'Despegando hacia tu asiento' : '', true);
     abordar(p, ocupantes);
+    quitarAviso(mundo ? 1800 : 600);
   } catch {
+    quitarAviso();
     err.textContent = 'No pudimos buscar ahora. Revisa tu conexión y vuelve a intentar.'; err.hidden = false;
   } finally { boton.disabled = false; boton.textContent = 'Buscar'; }
 }

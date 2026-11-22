@@ -47,6 +47,15 @@ function dibujarPlaneta(x, cx, cy, r) {
 
 function tagDe(clase) { return CLASES[clase].tag; }
 
+// Las luces del interior no se crean: se reutilizan las que mundo.js deja fijas en la nave (o.luces).
+// Crear luces nuevas obliga a recompilar todos los materiales de la escena y congela el celular un momento.
+function luz(o, i, color, intensidad, distancia, x, y, z) {
+  const l = o.luces?.[i] || new THREE.PointLight();
+  l.color.set(color); l.intensity = intensidad; l.distance = distancia; l.decay = 2; l.position.set(x, y, z);
+  if (!o.luces) o.grupo?.add(l);
+  return l;
+}
+
 // Coloca un pasajero (si el asiento tiene dueño conocido) con su nametag encima.
 function sentar(grupo, ocupante, { pos, rotY, clase, traje, detalle, alturaTag = 1.12, tag }) {
   if (!ocupante) return null;
@@ -57,7 +66,8 @@ function sentar(grupo, ocupante, { pos, rotY, clase, traje, detalle, alturaTag =
 }
 
 // ---------- CABINA DE MANDO ----------
-function cabina({ asiento, ocupantes, info }) {
+function cabina(o) {
+  const { asiento, ocupantes, info } = o;
   const g = new THREE.Group(); const S = SECCIONES.cabina; const R = 4.75;
   const piso = S.piso, techo = S.techo, vIn = 36.3, vOut = 38.7; const ABRE = 1.15;
   const mPared = mat('#2a2f3a', 0.6, 0.2), mPiso = mat('#1b1a1f', 0.8), mTrim = mat(C.azul, 0.4, 0.3);
@@ -86,9 +96,9 @@ function cabina({ asiento, ocupantes, info }) {
   ];
   textos.forEach((d, i) => {
     const a = Math.PI + (i - 1) * 0.55;
-    const p = cartel(1.15, 0.65, d, { px: 360 });
-    p.position.set(Math.sin(a) * 4.15, piso + 1.25, Math.cos(a) * 4.15);
-    p.lookAt(0, piso + 1.6, 0); p.rotateX(-0.35); g.add(p);
+    const p = cartel(1.0, 0.56, d, { px: 360 });
+    p.position.set(Math.sin(a) * 4.2, piso + 1.08, Math.cos(a) * 4.2);
+    p.lookAt(0, piso + 1.6, 0); p.rotateX(-0.6); g.add(p);
   });
   // asientos: fila de adelante (C-02, C-03, C-01, C-04, C-05) y fila de atrás elevada (C-06…C-10)
   const mAsiento = mat('#3a2418', 0.55), mAcento = mat(C.azul, 0.4);
@@ -109,13 +119,13 @@ function cabina({ asiento, ocupantes, info }) {
   filaB.forEach((c, i) => poner(c, Math.PI + (i - 2) * 0.4, 1.55, 0.4));
   for (const [cod, l] of Object.entries(lugares)) {
     if (cod === asiento) continue;
-    const o = cod === 'C-01' ? { usuario: info.investigadora || 'La investigadora', rol: 'INVESTIGADORA' } : ocupantes.get(cod);
-    sentar(g, o, { pos: l.pos, rotY: l.rotY, clase: 'cabina', traje: cod === 'C-01' ? C.mant : '#cfd8e6', detalle: cod === 'C-01' ? C.tinto : '#3c5a80', tag: cod === 'C-01' ? 'investigadora' : 'cabina' });
+    const oc = cod === 'C-01' ? { usuario: info.investigadora || 'La investigadora', rol: 'INVESTIGADORA' } : ocupantes.get(cod);
+    sentar(g, oc, { pos: l.pos, rotY: l.rotY, clase: 'cabina', traje: cod === 'C-01' ? C.mant : '#cfd8e6', detalle: cod === 'C-01' ? C.tinto : '#3c5a80', tag: cod === 'C-01' ? 'investigadora' : 'cabina' });
   }
-  const luz = new THREE.PointLight('#bcd4ff', 3.5, 12, 2); luz.position.set(0, techo - 0.4, -1); g.add(luz);
+  o.grupo = g; luz(o, 0, '#bcd4ff', 3.5, 12, 0, techo - 0.4, -1);
   const yo = lugares[asiento] || lugares['C-02'];
   const cabeza = yo.pos.clone().add(V(Math.sin(yo.a) * 0.05, 0.78, Math.cos(yo.a) * 0.05));
-  const centro = V(Math.sin(Math.PI + (yo.a - Math.PI) * 0.4) * 12, 38.6, Math.cos(Math.PI + (yo.a - Math.PI) * 0.4) * 12);
+  const centro = V(Math.sin(Math.PI + (yo.a - Math.PI) * 0.4) * 12, 39.6, Math.cos(Math.PI + (yo.a - Math.PI) * 0.4) * 12);
   return {
     grupo: g,
     ruta: [V(0, 37.6, -16), V(0, 37.5, -4.4), V(0, 37.6, -2.2), cabeza.clone().add(V(0, 0.4, 0)), cabeza],
@@ -126,7 +136,8 @@ function cabina({ asiento, ocupantes, info }) {
 }
 
 // ---------- CLASE ANILLO (suite con cúpula) ----------
-function anillo({ asiento, ocupantes, info, usuario }) {
+function anillo(o) {
+  const { asiento, ocupantes } = o;
   const g = new THREE.Group(); const S = SECCIONES.anillo; const piso = S.piso, techo = S.techo;
   const PASO = (Math.PI * 2) / 12; const a0 = leerAsiento(asiento);
   const mPared = mat('#efe3c8', 0.75), mOro = mat(C.oro, 0.3, 0.8), mMadera = mat('#6b4426', 0.6), mPiso = mat('#d9c7a2', 0.95);
@@ -199,15 +210,14 @@ function anillo({ asiento, ocupantes, info, usuario }) {
     const local = V(-0.42, piso + 0.55, -3.0);
     lugares.push({ cod, d, s, local });
     if (d !== 0) {
-      const o = ocupantes.get(cod);
-      if (o) {
+      const oc = ocupantes.get(cod);
+      if (oc) {
         const p = crearPasajero('#f1e6cc', C.oro); p.position.copy(local); p.rotation.y = -Math.PI / 2 + Math.PI; s.add(p);
-        const nt = crearNametag(o.usuario, 'oro'); nt.position.copy(local).add(V(0, 1.15, 0)); s.add(nt);
+        const nt = crearNametag(oc.usuario, 'oro'); nt.position.copy(local).add(V(0, 1.15, 0)); s.add(nt);
       }
     }
   }
-  const luz = new THREE.PointLight('#ffd7a0', 3.2, 9, 2); luz.position.set(0, techo - 0.5, -3); g.add(luz);
-  const luz2 = new THREE.PointLight('#ffc27a', 1.0, 5, 2); luz2.position.set(0.6, piso + 1.2, -3.5); g.add(luz2);
+  o.grupo = g; luz(o, 0, '#ffd7a0', 3.2, 9, 0, techo - 0.5, -3); luz(o, 1, '#ffc27a', 1.0, 5, 0.6, piso + 1.2, -3.5);
   const cabeza = V(-0.42, piso + 1.35, -2.45);
   return {
     grupo: g,
@@ -219,7 +229,8 @@ function anillo({ asiento, ocupantes, info, usuario }) {
 }
 
 // ---------- ÓRBITA y TURISTA (filas) ----------
-function filas(clase, { asiento, ocupantes, info, usuario }) {
+function filas(clase, o) {
+  const { asiento, ocupantes, usuario } = o;
   const g = new THREE.Group(); const S = SECCIONES[clase]; const piso = S.piso, techo = S.techo;
   const esT = clase === 'turista'; const c = CLASES[clase]; const a0 = leerAsiento(asiento);
   const PASO = esT ? 0.78 : 1.2; const X0 = -3.0, X1 = 3.0, Z0 = esT ? -3.95 : -4.0, Z1 = -0.05;
@@ -318,10 +329,10 @@ function filas(clase, { asiento, ocupantes, info, usuario }) {
       }
       const sentado = V(xf, piso + (esT ? 0.48 : 0.52), z);
       if (cod === asiento) { lugarPropio = sentado; continue; }
-      const o = ocupantes.get(cod);
-      if (o) {
+      const oc = ocupantes.get(cod);
+      if (oc) {
         const p = crearPasajero(esT ? '#b0602e' : '#9aa3ae', esT ? '#4a220e' : C.azul); p.position.copy(sentado); g.add(p);
-        if (Math.abs(df) <= 1) { const nt = crearNametag(o.usuario, tagDe(clase)); nt.position.copy(sentado).add(V(0, 1.08 + (col % 2) * 0.13, 0)); g.add(nt); }
+        if (Math.abs(df) <= 1) { const nt = crearNametag(oc.usuario, tagDe(clase)); nt.position.copy(sentado).add(V(0, 1.08 + (col % 2) * 0.13, 0)); g.add(nt); }
       }
     }
   }
@@ -329,7 +340,7 @@ function filas(clase, { asiento, ocupantes, info, usuario }) {
   const tubo = caja(1.4, 0.05, 0.08, new THREE.MeshBasicMaterial({ color: esT ? '#e8f4ff' : '#fff3dc' }), 0, techo - 0.05, -2.0);
   g.add(tubo);
   const BASE_LUZ = esT ? 1.4 : 2.0;
-  const luz = new THREE.PointLight(esT ? '#dfefff' : '#f6f1e8', BASE_LUZ, 9, 2); luz.position.set(0, techo - 0.1, -2.0); g.add(luz);
+  o.grupo = g; const luzT = luz(o, 0, esT ? '#dfefff' : '#f6f1e8', BASE_LUZ, 9, 0, techo - 0.1, -2.0);
   const cabeza = lugarPropio.clone().add(V(-0.05, esT ? 0.9 : 0.8, 0));
   const pasillo = esT ? -2.0 : -2.1;
   const huecoX = esT ? PASO / 2 : PASO / 2;
@@ -355,7 +366,7 @@ function filas(clase, { asiento, ocupantes, info, usuario }) {
       // parpadeo determinista: casi siempre prendido, con cortes cortos
       const f = Math.sin(t * 13.1) + Math.sin(t * 7.3 + 1.2) + Math.sin(t * 29.7 + 0.4);
       const on = f > -1.9 ? 1 : 0.15;
-      luz.intensity = BASE_LUZ * on * (0.92 + 0.08 * temblor(t, 9));
+      luzT.intensity = BASE_LUZ * on * (0.92 + 0.08 * temblor(t, 9));
       tubo.material.color.setScalar(on > 0.5 ? 0.95 : 0.2);
     },
   };
@@ -367,7 +378,9 @@ export function crearInterior(clase, opciones) {
   const o = { ocupantes: new Map(), info: {}, ...opciones };
   const r = clase === 'cabina' ? cabina(o) : clase === 'anillo' ? anillo(o) : filas(clase, o);
   r.clase = clase;
+  r.etiquetas = []; r.grupo.traverse((n) => { if (n.isSprite) r.etiquetas.push(n); });
   r.liberar = () => {
+    for (const l of o.luces || []) l.intensity = 0;
     r.grupo.traverse((n) => {
       if (n.userData.liberar) n.userData.liberar();
       if (n.geometry && !n.geometry.userData?.compartida) n.geometry.dispose?.();
