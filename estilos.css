@@ -110,8 +110,8 @@ body[data-nivel="1"] .punto, body[data-nivel="2"] .punto, body[data-nivel="3"] .
 .gigante em { font-style: normal; color: var(--oro); }
 .ascensos ul { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .pasos { margin: 14px 0 12px; padding: 0; list-style: none; counter-reset: p; display: grid; gap: 12px; }
-.pasos li { counter-increment: p; display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start; }
-.pasos li::before { content: counter(p); display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--tinto); color: var(--mant); font: 800 13px var(--ancha); }
+.pasos li { counter-increment: p; position: relative; padding: 4px 0 0 44px; min-height: 30px; }
+.pasos li::before { content: counter(p); position: absolute; left: 0; top: 0; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--tinto); color: var(--mant); font: 800 13px var(--ancha); }
 .nota { margin: 8px 0 0; font-size: 13px; color: var(--suave); }
 .tripulacion { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .tag { display: inline-block; font: 500 14px/1 var(--mono); padding: 7px 10px; background: rgba(0,0,0,.55); color: var(--azul); border: 1px solid rgba(199,216,238,.35); }
