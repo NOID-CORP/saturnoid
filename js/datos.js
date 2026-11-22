@@ -4,21 +4,28 @@ import { vecinos } from './asientos.js';
 
 const CAMPOS = 'usuario,clase,asiento,numero,ciudad,comentado_en,episodio,es_tripulacion,ascendido_en,es_prueba';
 
-async function pedir(ruta, opciones = {}) {
+// Solo GET y la clave (pública) en la URL, sin cabeceras propias: así el navegador no hace la consulta previa
+// de CORS (OPTIONS) y cada lectura llega un viaje de ida y vuelta antes.
+const urlLectura = (ruta) => `${SUPABASE_URL}/rest/v1/${ruta}${ruta.includes('?') ? '&' : '?'}apikey=${SUPABASE_LLAVE}`;
+
+async function pedir(ruta) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), 9000);
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/${ruta}`, {
-      ...opciones, signal: ctl.signal,
-      headers: { apikey: SUPABASE_LLAVE, 'Content-Type': 'application/json', ...(opciones.headers || {}) },
-    });
+    const r = await fetch(urlLectura(ruta), { signal: ctl.signal });
     if (!r.ok) throw new Error(`Supabase ${r.status}`);
     return await r.json();
   } finally { clearTimeout(t); }
 }
 
 // Contadores en vivo + estado de la serie (episodio, reel, metas, cupos, investigadora).
-export const resumen = () => pedir('rpc/saturnoid_resumen', { method: 'POST', body: '{}' });
+// La primera vez usa el pedido que index.html ya lanzó desde el <head> (llega antes que el JavaScript).
+let previo = globalThis.__resumen || null;
+export const resumen = () => {
+  const p = previo; previo = null;
+  const normal = () => pedir('rpc/saturnoid_resumen');
+  return p ? p.catch(normal) : normal();
+};
 
 export async function buscarPasajero(usuario) {
   const filas = await pedir(`saturnoid_pasajeros?usuario=eq.${encodeURIComponent(usuario)}&select=${CAMPOS}&limit=1`);

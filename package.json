@@ -4,6 +4,11 @@
   "type": "module",
   "scripts": {
     "local": "python3 -m http.server 8080 --bind 127.0.0.1",
-    "probar": "node pruebas/probar.mjs"
+    "probar": "node pruebas/probar.mjs",
+    "construir": "node herramientas/construir.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12",
+    "three": "0.181.2"
   }
 }

@@ -87,9 +87,9 @@ function textoCupos(q) {
   return 'La nave está llena: 1.000 pasajeros a bordo.';
 }
 
-async function cargarTripulacion() {
+async function cargarTripulacion(pedido = tripulacion()) {
   try {
-    const t = await tripulacion();
+    const t = await pedido;
     const inv = R?.estado?.investigadora || 'La investigadora';
     $('#tripulacion').innerHTML = `<li class="tag inv"><small>INVESTIGADORA</small>${esc(inv)}</li>` +
       t.map((x) => `<li class="tag">@${esc(x.usuario)}</li>`).join('');
@@ -112,8 +112,9 @@ function elegirCalidad() {
 async function iniciar3D() {
   if (!soportaWebGL()) return planB();
   try {
-    await Promise.all(['800 40px Panchang', '500 40px "DM Mono"', '400 40px Switzer'].map((f) => document.fonts.load(f)));
-    const [{ crearMundo }, camara] = await Promise.all([import('../escena/mundo.js'), import('../escena/camara.js')]);
+    // fuentes (para los nametags) y escena a la vez, no una después de la otra
+    const [{ crearMundo }, camara] = await Promise.all([import('../escena/mundo.js'), import('../escena/camara.js'),
+      ...['800 40px Panchang', '500 40px "DM Mono"', '400 40px Switzer'].map((f) => document.fonts.load(f))]);
     modulos = camara;
     const lienzo = $('#lienzo');
     mundo = crearMundo({ canvas: lienzo, calidad: MODO_FOTO ? 'alta' : elegirCalidad() });
@@ -392,7 +393,9 @@ addEventListener('scroll', () => $('#barra').classList.toggle('solida', scrollY 
 addEventListener('keydown', (e) => { if (e.key === 'Escape') { $('#pase').hidden = true; $('#sin-asiento').hidden = true; } });
 
 if (MODO_FOTO) document.body.classList.add('foto');
-const listoDatos = cargarResumen().then(cargarTripulacion);
+// la tripulación se pide a la vez que el resumen (se pinta cuando llegan los dos: usa el nombre de la investigadora)
+const pedidoTripulacion = tripulacion(); pedidoTripulacion.catch(() => {});
+const listoDatos = cargarResumen().then(() => cargarTripulacion(pedidoTripulacion));
 setInterval(() => { if (!document.hidden) cargarResumen(); }, 60000);
 // el 3D arranca después del primer pintado, para que la página aparezca de una
 const listo3D = new Promise((ok) => requestAnimationFrame(() => setTimeout(() => iniciar3D().finally(ok), 30)));

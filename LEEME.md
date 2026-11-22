@@ -80,10 +80,31 @@ En total, 1.000 pasajeros (más la tripulación). Motor 1 enciende con 50, motor
 
 La lógica está en `js/asientos.js` (la usan la web y los scripts).
 
+## Después de tocar el código (js/, escena/ o estilos.css)
+
+La web publicada no carga esos archivos directamente: carga `dist/` y los estilos que van dentro de `index.html`.
+Después de cambiar cualquiera de ellos, antes de subir a GitHub:
+
+```
+npm install                   # una vez (esbuild y Three.js 0.181.2, solo para armar)
+npm run construir             # arma dist/ y actualiza el bloque marcado de index.html
+```
+
+Sube también `dist/` e `index.html`. Los textos de `index.html` fuera del bloque `construir:inicio … construir:fin`
+se editan a mano como siempre. Lo que hace (`herramientas/construir.mjs`), sin cambiar nada de lo que se ve:
+
+- Junta `js/app.js`, `escena/` y Three.js en pocos archivos minificados, sin el código de Three.js que no se usa
+  (de ~40 pedidos a 15 y de 735 KB a 551 KB de Three.js); la escena 3D se descarga en paralelo desde el `<head>`.
+- Mete `estilos.css` minificado dentro de `index.html` (un pedido menos antes de la primera pintura).
+- Pide el contador a Supabase desde el `<head>`, sin esperar al JavaScript. Las lecturas van por GET con la clave
+  pública en la URL: así el navegador no hace la consulta previa de CORS (un viaje de ida y vuelta menos en cada una).
+
+Además, las sombras de la escena solo se recalculan cuando la nave se mueve (con la nave quieta son las mismas).
+
 ## Probar en local
 
 ```
-npm run local                 # http://127.0.0.1:8080
+npm run local                 # http://127.0.0.1:8080 (después de npm run construir)
 cd pruebas && npm install     # una vez (playwright-core, usa el Chrome instalado)
 node pruebas/probar.mjs       # celular 390×844: portada, las 4 clases, pase, usuario sin asiento → pruebas/capturas/
 node pruebas/probar.mjs --escritorio prueba_0007

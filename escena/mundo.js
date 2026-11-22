@@ -27,6 +27,10 @@ export function crearMundo({ canvas, calidad = 'media', ancho, alto }) {
   renderer.toneMappingExposure = 1.05;
   renderer.shadowMap.enabled = Q.sombras;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  // Las sombras solo cambian si la nave se mueve (tiembla con los motores): no se recalculan en cada cuadro.
+  renderer.shadowMap.autoUpdate = false;
+  renderer.shadowMap.needsUpdate = true;
+  const posSombra = new THREE.Vector3(NaN, NaN, NaN);
 
   const camara = new THREE.PerspectiveCamera(60, 1, 0.05, 1500);
   const camCielo = new THREE.PerspectiveCamera(60, 1, 1, 4000);
@@ -123,6 +127,7 @@ export function crearMundo({ canvas, calidad = 'media', ancho, alto }) {
       plataforma.actualizar(t);
       const escalaPuntos = (H * px * 0.5) / Math.tan(THREE.MathUtils.degToRad(camara.fov) / 2);
       nave.actualizar(t, nivel, { escalaPuntos, adentro });
+      if (!nave.cuerpo.position.equals(posSombra)) { posSombra.copy(nave.cuerpo.position); renderer.shadowMap.needsUpdate = true; }
       interior?.actualizar(t);
       // los nametags se ven a través de las paredes: solo aparecen cuando la cámara ya está adentro
       if (interior) { const k = Math.min(1, Math.max(0, (adentro - 0.7) / 0.3)); for (const s of interior.etiquetas) { s.visible = k > 0; s.material.opacity = k; } }
