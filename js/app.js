@@ -49,7 +49,7 @@ function pintarResumen() {
   // tres tramos iguales (uno por nivel); dentro de cada tramo, el avance real hacia su meta
   const previo = metas[n - 1] || 0, siguiente = metas[n];
   const avance = n >= metas.length ? metas.length : n + (p - previo) / (siguiente - previo);
-  $('#progreso .relleno').style.width = `${Math.min(100, (avance / metas.length) * 100)}%`;
+  $('#progreso .relleno').style.transform = `scaleX(${Math.min(1, avance / metas.length)})`;
   $('#progreso').setAttribute('aria-label', lineaMeta(p, metas));
   document.querySelectorAll('#progreso li').forEach((li, i) => {
     li.style.left = `${((i + 1) / metas.length) * 100}%`;
