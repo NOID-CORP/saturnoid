@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Saturnoid · Una serie de NOID</title>
+  <meta name="description" content="La nave a Saturnoid enciende cuando hay suficientes pasajeros. Busca tu usuario y mira tu asiento.">
+  <meta name="theme-color" content="#1e1209">
+  <meta property="og:title" content="Saturnoid · ¿Ya tienes asiento?">
+  <meta property="og:description" content="Comenta en el reel de @noidd.corp y te asignamos asiento en la nave. Búscate aquí.">
+  <meta property="og:image" content="https://noidcorp.com/saturnoid/assets/img/portada-1200.jpg">
+  <meta property="og:url" content="https://noidcorp.com/saturnoid/">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/img/icono.svg" type="image/svg+xml">
+  <link rel="preload" href="assets/fuentes/Panchang-800.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fuentes/DMMono-500.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fuentes/Switzer-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/img/portada-movil.jpg" as="image" media="(max-aspect-ratio: 4/5)">
+  <link rel="preload" href="assets/img/portada-1600.jpg" as="image" media="(min-aspect-ratio: 4/5)">
+  <link rel="modulepreload" href="lib/three/three.module.min.js">
+  <link rel="stylesheet" href="estilos.css">
+  <script type="importmap">
+    { "imports": { "three": "./lib/three/three.module.min.js", "three/addons/": "./lib/three/addons/" } }
+  </script>
+</head>
+<body class="cargando">
+  <div id="fondo" aria-hidden="true"></div>
+  <canvas id="lienzo" aria-hidden="true"></canvas>
+  <div id="velo" aria-hidden="true"></div>
+
+  <header id="barra">
+    <a class="marca" href="./" aria-label="Saturnoid, inicio"><b>SATURNOID</b><span id="ep">· EP. 1</span></a>
+    <a class="serie" href="https://noidcorp.com/" rel="noopener">Una serie de NOID</a>
+  </header>
+  <div id="aviso-prueba" hidden>Datos de prueba · <span></span> de ejemplo</div>
+
+  <main id="portada">
+    <section class="heroe" aria-live="polite">
+      <p class="estado"><i class="punto"></i><span id="estado-texto">Conectando con la nave…</span></p>
+      <div class="contador">
+        <span class="etq">Pasajeros a bordo</span>
+        <div class="cifra"><b id="pasajeros">—</b><span id="meta"></span></div>
+        <div class="progreso" id="progreso" role="img" aria-label="Progreso de la nave">
+          <div class="relleno"></div>
+          <ol>
+            <li><span>Motor 1</span></li>
+            <li><span>Motor 2</span></li>
+            <li><span>Despegue</span></li>
+          </ol>
+        </div>
+      </div>
+
+      <form id="buscador" class="buscador" autocomplete="off">
+        <label for="usuario" class="etq">Busca tu usuario</label>
+        <div class="campo">
+          <span aria-hidden="true">@</span>
+          <input id="usuario" name="usuario" type="text" inputmode="text" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="tu_usuario" maxlength="80" enterkeyhint="search">
+          <button type="submit">Buscar</button>
+        </div>
+        <p class="error" id="error" role="alert" hidden></p>
+      </form>
+
+      <p class="cupos-rapido" id="cupos-rapido"></p>
+      <a class="enlace-reel" id="reel" href="https://www.instagram.com/noidd.corp/" target="_blank" rel="noopener">Ver la serie en Instagram ↗</a>
+      <a class="bajar" href="#clases" aria-label="Ver las clases">Las clases ↓</a>
+    </section>
+
+    <div class="hoja">
+      <section id="clases" class="bloque">
+        <h2>Comenta antes, viaja mejor</h2>
+        <p class="sub">La nave lleva 1.000 pasajeros. El asiento se asigna por orden de llegada: los primeros van en las mejores clases.</p>
+        <div class="clases">
+          <article class="clase cabina">
+            <header><h3>Cabina de mando</h3><span class="cupo llena" data-clase="cabina">Llena</span></header>
+            <p class="quien">La investigadora y la tripulación fundadora.</p>
+            <ul><li>Consolas de mando</li><li>La vista de frente, por el ventanal</li></ul>
+            <p class="llegar"><b>Al llegar:</b> ya están.</p>
+          </article>
+          <article class="clase anillo">
+            <header><h3>Clase Anillo</h3><span class="cupo" data-clase="anillo">—</span></header>
+            <ul><li>Suite con cama</li><li>Cúpula de cristal propia, mirando al anillo</li><li>Comida de chef y un pequeño jardín</li><li>Gravedad completa</li><li>Nametag dorado</li></ul>
+            <p class="llegar"><b>Al llegar:</b> bajan primero después de la tripulación y escogen lote frente al anillo.</p>
+          </article>
+          <article class="clase orbita">
+            <header><h3>Clase Órbita</h3><span class="cupo" data-clase="orbita">—</span></header>
+            <ul><li>Asiento que se vuelve cama</li><li>Ventana compartida</li><li>Comida caliente y pantalla propia</li><li>Nametag plateado</li></ul>
+            <p class="llegar"><b>Al llegar:</b> lote en el valle.</p>
+          </article>
+          <article class="clase turista">
+            <header><h3>Turista</h3><span class="cupo" data-clase="turista">—</span></header>
+            <ul><li>Puesto del medio, junto a los motores (vibra)</li><li>Sin ventana</li><li>Barras de proteína</li><li>Un baño para 200</li><li>Una luz que parpadea</li></ul>
+            <p class="llegar"><b>Al llegar:</b> el lote que quede.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="bloque ascenso">
+        <p class="etq">Lo bueno de Turista</p>
+        <h2 class="gigante">Cada episodio, <em>3 de Turista</em> suben a Clase Anillo</h2>
+        <div id="ascensos" class="ascensos" hidden><p class="etq">Subieron en el episodio <span></span></p><ul></ul></div>
+      </section>
+
+      <section class="bloque">
+        <h2>Cómo subirte</h2>
+        <ol class="pasos">
+          <li><b>Comenta tu ciudad</b> en el último episodio de <a href="https://www.instagram.com/noidd.corp/" target="_blank" rel="noopener">@noidd.corp</a>.</li>
+          <li><b>Te asignamos asiento</b> por orden de llegada, después de cada episodio.</li>
+          <li><b>Búscate aquí</b>, mira tu asiento y comparte tu pase.</li>
+        </ol>
+        <p class="nota">Sigue la cuenta para no perderte el despegue. El asiento lo da el comentario, no el seguir.</p>
+      </section>
+
+      <section class="bloque">
+        <h2>Tripulación fundadora</h2>
+        <p class="sub">Los primeros seguidores de @noidd.corp. Van en la cabina de mando.</p>
+        <ul id="tripulacion" class="tripulacion"></ul>
+      </section>
+
+      <section class="bloque privacidad">
+        <h2>Privacidad</h2>
+        <p>Solo mostramos tu usuario público de Instagram y la ciudad que escribiste en tu comentario. Si quieres salir de la nave, escríbenos por mensaje directo a @noidd.corp y te quitamos.</p>
+      </section>
+
+      <footer class="pie">
+        <p>Saturnoid es una serie de ficción de NOID. Los planetas de roca con anillos existen; Saturnoid, todavía no.</p>
+        <p><a href="https://noidcorp.com/">noidcorp.com</a> · <a href="https://noidcorp.com/privacidad/">Política de datos</a></p>
+      </footer>
+    </div>
+  </main>
+
+  <!-- Vista desde el asiento -->
+  <section id="asiento" class="panel-asiento" hidden aria-live="polite">
+    <button class="volver" id="volver" type="button">← La nave</button>
+    <div class="tarjeta">
+      <p class="clase-chip" id="a-clase"></p>
+      <h2 id="a-usuario"></h2>
+      <dl class="datos">
+        <div><dt>Asiento</dt><dd id="a-asiento"></dd></div>
+        <div><dt id="a-num-etq">Pasajero</dt><dd id="a-numero"></dd></div>
+        <div><dt>Abordó</dt><dd id="a-fecha"></dd></div>
+      </dl>
+      <p class="vecinos" id="a-vecinos"></p>
+      <p class="extra" id="a-extra" hidden></p>
+      <div class="mapa" id="a-mapa" hidden></div>
+      <div class="acciones">
+        <button type="button" class="primario" id="ver-pase">Mi pase de abordar</button>
+      </div>
+      <p class="pista" id="a-pista">Arrastra para mirar alrededor</p>
+    </div>
+  </section>
+
+  <!-- No aparece -->
+  <section id="sin-asiento" class="panel-flotante" hidden role="dialog" aria-labelledby="sa-titulo">
+    <div class="tarjeta">
+      <h2 id="sa-titulo">Todavía no tienes asiento</h2>
+      <p id="sa-texto">Comenta en el último episodio y te subimos.</p>
+      <p class="cupos-sa" id="sa-cupos"></p>
+      <p class="nota">Si ya comentaste, apareces cuando subamos los asientos de ese episodio.</p>
+      <div class="acciones">
+        <a class="primario" id="sa-reel" href="https://www.instagram.com/noidd.corp/" target="_blank" rel="noopener">Ir al episodio</a>
+        <button type="button" class="secundario" id="sa-cerrar">Buscar otro</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pase -->
+  <section id="pase" class="panel-flotante pase" hidden role="dialog" aria-label="Pase de abordar">
+    <div class="tarjeta">
+      <div id="pase-img" class="pase-img"></div>
+      <div class="acciones">
+        <button type="button" class="primario" id="pase-compartir">Compartir</button>
+        <a class="secundario" id="pase-guardar" download="saturnoid-pase.png">Guardar imagen</a>
+      </div>
+      <p class="nota">Tamaño para historias. Si no se descarga, mantén presionada la imagen y guárdala.</p>
+      <button type="button" class="cerrar" id="pase-cerrar" aria-label="Cerrar">×</button>
+    </div>
+  </section>
+
+  <noscript><p class="sin-js">Esta página necesita JavaScript para buscar tu asiento.</p></noscript>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

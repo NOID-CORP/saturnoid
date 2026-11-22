@@ -1,0 +1,8 @@
+# Nada de datos de personas en GitHub: las listas de comentarios (usuario, ciudad, hora) se quedan en este Mac.
+datos/
+pruebas/datos/
+pruebas/capturas/
+node_modules/
+.DS_Store
+.env
+.impeccable/
