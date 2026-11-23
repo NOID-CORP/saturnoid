@@ -27,6 +27,21 @@ function cartel(ancho, alto, dibujar, { emisivo = true, px = 256 } = {}) {
   const m = emisivo ? new THREE.MeshBasicMaterial({ map: t, color: new THREE.Color(0.62, 0.62, 0.62) }) : new THREE.MeshStandardMaterial({ map: t, roughness: 0.8 });
   return new THREE.Mesh(new THREE.PlaneGeometry(ancho, alto), m);
 }
+// Imágenes que son iguales en todos los interiores (las pantallas de los respaldos menos la tuya, el letrero del frente,
+// los avisos de Turista, el techo y las mantas de Luna): se dibujan una sola vez, nunca se liberan y precalentar las sube
+// con la página quieta (antes cada interior dibujaba y subía ~24 copias iguales en el primer cuadro del vuelo).
+// Lo que se comparte es solo la imagen: cada pieza sigue con su propio material, creado en el mismo momento que antes,
+// para que three.js las dibuje en el mismo orden (compartir el material cambia el orden y con él algún píxel de las juntas).
+const propio = (base) => { const m = base.clone(); delete m.userData.compartida; return m; };
+const PANTALLAS = {};
+function pantallaComun(clave, ancho, alto, dibujar, opciones) {
+  let base = PANTALLAS[clave];
+  if (!base) {
+    const muestra = cartel(ancho, alto, dibujar, opciones); muestra.geometry.dispose();
+    base = PANTALLAS[clave] = muestra.material; base.userData.compartida = true; base.map.userData.compartida = true;
+  }
+  return new THREE.Mesh(new THREE.PlaneGeometry(ancho, alto), propio(base));
+}
 const fuente = (peso, px, fam = 'DM Mono') => `${peso} ${px}px "${fam}", ${fam === 'DM Mono' ? 'monospace' : 'sans-serif'}`;
 
 // Planeta dibujado para las pantallas (2D).
@@ -88,14 +103,14 @@ function lienzoCieloLuna() {
   dibujarLuna(x, W * 0.78, H * 0.3, H * 0.13);
   return (cieloLuna = cv);
 }
-// El material del techo también se hace una sola vez (y no se libera): así la imagen de 1620×1080 se sube a la tarjeta
-// gráfica una vez (precalentar lo hace con la página quieta) y entrar a Luna no da un tirón a mitad del vuelo.
+// La imagen de 1620×1080 del techo se sube a la tarjeta gráfica una sola vez (ver propio()).
 let matCieloLuna = null;
 function materialCieloLuna() {
-  if (matCieloLuna) return matCieloLuna;
-  const t = new THREE.CanvasTexture(lienzoCieloLuna()); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.userData.compartida = true;
-  matCieloLuna = new THREE.MeshBasicMaterial({ map: t, toneMapped: false }); matCieloLuna.userData.compartida = true;
-  return matCieloLuna;
+  if (!matCieloLuna) {
+    const t = new THREE.CanvasTexture(lienzoCieloLuna()); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.userData.compartida = true;
+    matCieloLuna = new THREE.MeshBasicMaterial({ map: t, toneMapped: false }); matCieloLuna.userData.compartida = true;
+  }
+  return propio(matCieloLuna);
 }
 
 function tagDe(clase) { return CLASES[clase].tag; }
@@ -217,7 +232,7 @@ function anillo(o) {
     // pilares y mamparas de vidrio esmerilado a cada lado
     for (const lado of [-1, 1]) {
       const b = lado * PASO / 2;
-      const mampara = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 3.25), new THREE.MeshStandardMaterial({ color: '#f6eedc', transparent: true, opacity: 0.22, roughness: 0.2, side: THREE.DoubleSide, depthWrite: false }));
+      const mampara = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 3.25), new THREE.MeshStandardMaterial({ color: '#f6eedc', transparent: true, opacity: 0.22, roughness: 0.2, side: THREE.DoubleSide, depthWrite: false, forceSinglePass: true }));
       mampara.position.set(Math.sin(b) * -3.2, piso + 1.62, Math.cos(b) * -3.2); mampara.rotation.y = b + Math.PI / 2; s.add(mampara);
       const marco = caja(0.06, 3.25, 0.06, mOro, Math.sin(b) * -4.85, piso + 1.62, Math.cos(b) * -4.85); s.add(marco);
     }
@@ -297,7 +312,19 @@ function geosFilas() {
   for (const k in GEO) GEO[k].userData.compartida = true;
   return GEO;
 }
+// Los planos transparentes de doble cara (vapor, mamparas) van en una sola pasada (forceSinglePass): en un plano la
+// cara de atrás y la de adelante nunca se tapan entre sí, así que se ve igual y no hay un segundo programa que preparar.
+// Las imágenes del vapor y de la manta son iguales en todos los interiores de Luna: se dibujan una vez (ver propio()).
+let texVapor = null, matManta = null;
 function texturaVapor() {
+  if (!texVapor) { texVapor = dibujarVapor(); texVapor.userData.compartida = true; }
+  return texVapor;
+}
+function materialManta() {
+  if (!matManta) { matManta = new THREE.MeshStandardMaterial({ map: texturaManta(), roughness: 0.95 }); matManta.userData.compartida = true; matManta.map.userData.compartida = true; }
+  return propio(matManta);
+}
+function dibujarVapor() {
   const cv = lienzo(64, 128), x = cv.getContext('2d');
   const g = x.createRadialGradient(32, 90, 2, 32, 76, 32); g.addColorStop(0, 'rgba(255,255,255,.6)'); g.addColorStop(1, 'rgba(255,255,255,0)');
   x.fillStyle = g; x.fillRect(0, 0, 64, 128);
@@ -339,7 +366,7 @@ function filas(clase, o) {
     }
     g.add(caja(ancho, 0.22, 0.3, mat('#4a4640', 0.7, 0.4), 0, techo - 0.15, cz));
     // "aquí iría una ventana" (la de Turista está en el piso)
-    const falsa = cartel(1.1, 0.7, (x, W, H) => {
+    const falsa = pantallaComun('t-falsa', 1.1, 0.7, (x, W, H) => {
       x.fillStyle = '#5b5750'; x.fillRect(0, 0, W, H);
       x.setLineDash([18, 12]); x.strokeStyle = '#f2e6c8'; x.lineWidth = 6; x.beginPath(); x.ellipse(W / 2, H / 2, W * 0.36, H * 0.38, 0, 0, Math.PI * 2); x.stroke();
       x.fillStyle = '#f2e6c8'; x.textAlign = 'center'; x.font = fuente(500, H * 0.1); x.fillText('VENTANA:', W / 2, H * 0.42); x.fillText('NO INCLUIDA', W / 2, H * 0.56);
@@ -374,7 +401,7 @@ function filas(clase, o) {
     animar.push((t) => mFocos.forEach((m, i) => m.color.setRGB(1, 0.82, 0.55).multiplyScalar(0.85 + 0.15 * Math.sin(t * 2.1 + i * 2.4))));
   }
   // pared de adelante (+x): cartel de la clase
-  const frente = cartel(fondo * 0.92, alto * (esT ? 0.5 : 0.62), (x, W, H) => {
+  const frente = pantallaComun('frente-' + clase, fondo * 0.92, alto * (esT ? 0.5 : 0.62), (x, W, H) => {
     x.fillStyle = esT ? '#4D0C10' : esL ? '#16143a' : '#1d2633'; x.fillRect(0, 0, W, H);
     x.textAlign = 'center';
     if (esT) {
@@ -394,10 +421,10 @@ function filas(clase, o) {
   if (esT) {
     const avisos = [['RUIDO DE MOTORES: INCLUIDO', 1.7, -0.08, 1.4], ['BARRAS DE PROTEÍNA · SABOR: SÍ', -1.6, -0.08, 1.5]];
     for (const [txt, x0, zz, w] of avisos) {
-      const a = cartel(w, 0.22, (x, W, H) => { x.fillStyle = '#f2c14e'; x.fillRect(0, 0, W, H); x.fillStyle = '#1e1209'; x.textAlign = 'center'; x.font = fuente(500, H * 0.42); x.fillText(txt, W / 2, H * 0.64); }, { emisivo: false, px: 300 });
+      const a = pantallaComun('t-' + txt, w, 0.22, (x, W, H) => { x.fillStyle = '#f2c14e'; x.fillRect(0, 0, W, H); x.fillStyle = '#1e1209'; x.textAlign = 'center'; x.font = fuente(500, H * 0.42); x.fillText(txt, W / 2, H * 0.64); }, { emisivo: false, px: 300 });
       a.position.set(x0, piso + 1.85, Z1 + zz); a.rotation.y = Math.PI; g.add(a);
     }
-    const bano = cartel(0.9, 0.34, (x, W, H) => { x.fillStyle = '#111'; x.fillRect(0, 0, W, H); x.fillStyle = '#ff4b3e'; x.textAlign = 'center'; x.font = fuente(500, H * 0.32); x.fillText('BAÑO 1/200', W / 2, H * 0.42); x.font = fuente(500, H * 0.24); x.fillText('FILA: 147', W / 2, H * 0.8); }, { px: 300 });
+    const bano = pantallaComun('t-bano', 0.9, 0.34, (x, W, H) => { x.fillStyle = '#111'; x.fillRect(0, 0, W, H); x.fillStyle = '#ff4b3e'; x.textAlign = 'center'; x.font = fuente(500, H * 0.32); x.fillText('BAÑO 1/200', W / 2, H * 0.42); x.font = fuente(500, H * 0.24); x.fillText('FILA: 147', W / 2, H * 0.8); }, { px: 300 });
     bano.position.set(-1.7, piso + 1.75, Z0 + 0.03); g.add(bano);
     // la ventanita al motor encendido, en el piso del pasillo (con aro de latón y placa)
     const uFuego = { uT: { value: 0 } };
@@ -422,7 +449,7 @@ function filas(clase, o) {
     const aro = new THREE.Mesh(new THREE.TorusGeometry(0.31, 0.035, 12, 48), laton); aro.rotation.x = Math.PI / 2; aro.position.set(VX_MOTOR, piso + 0.02, VZ_MOTOR); g.add(aro);
     const geoTornillo = new THREE.SphereGeometry(0.014, 8, 6);
     for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; const tor = new THREE.Mesh(geoTornillo, laton); tor.position.set(VX_MOTOR + Math.cos(a) * 0.31, piso + 0.05, VZ_MOTOR + Math.sin(a) * 0.31); g.add(tor); }
-    const placa = cartel(0.62, 0.11, (x, W, H) => { x.fillStyle = '#c9a45a'; x.fillRect(0, 0, W, H); x.fillStyle = '#2a1608'; x.textAlign = 'center'; x.font = fuente(500, H * 0.5); x.fillText('★ VISTA AL MOTOR ★', W / 2, H * 0.68); }, { px: 1000 });
+    const placa = pantallaComun('t-placa', 0.62, 0.11, (x, W, H) => { x.fillStyle = '#c9a45a'; x.fillRect(0, 0, W, H); x.fillStyle = '#2a1608'; x.textAlign = 'center'; x.font = fuente(500, H * 0.5); x.fillText('★ VISTA AL MOTOR ★', W / 2, H * 0.68); }, { px: 1000 });
     placa.material.color.setScalar(0.85);
     placa.rotation.x = -Math.PI / 2; placa.rotation.z = -Math.PI / 2; placa.position.set(VX_MOTOR - 0.45, piso + 0.008, VZ_MOTOR); g.add(placa);
     const luzFuego = luz(o, 1, '#ff8a3d', 1.6, 3.2, VX_MOTOR, piso + 0.35, VZ_MOTOR);
@@ -438,9 +465,9 @@ function filas(clase, o) {
   };
   let mManta = null, mTaza = null, mChoco = null, mVapor = null;
   if (esL) {
-    mManta = new THREE.MeshStandardMaterial({ map: texturaManta(), roughness: 0.95 });
+    mManta = materialManta();
     mTaza = mat('#f4ede0', 0.35); mChoco = mat('#4a2412', 0.4);
-    mVapor = new THREE.MeshBasicMaterial({ map: texturaVapor(), transparent: true, depthWrite: false, opacity: 0.3, side: THREE.DoubleSide });
+    mVapor = new THREE.MeshBasicMaterial({ map: texturaVapor(), transparent: true, depthWrite: false, opacity: 0.3, side: THREE.DoubleSide, forceSinglePass: true });
     animar.push((t) => { mVapor.opacity = 0.22 + 0.1 * Math.sin(t * 1.7); });
   }
   let lugarPropio = null;
@@ -466,7 +493,9 @@ function filas(clase, o) {
         s.add(caja(0.5, 0.1, 0.1, mB, 0.06, 0.66, 0.3, 0.03)); s.add(caja(0.5, 0.1, 0.1, mB, 0.06, 0.66, -0.3, 0.03));
         // pantalla propia en el respaldo (mira hacia la fila de atrás)
         const esMia = df === -1 && col === a0.col;
-        const pan = cartel(0.36, 0.24, esMia ? pantallaTex(`@${usuario}`, `ASIENTO ${asiento}`) : esL ? pantallaTex('CLASE LUNA', 'CHOCOLATE: LISTO') : pantallaTex('SATURNOID', 'CLASE ÓRBITA'), { px: 500 });
+        const pan = esMia ? cartel(0.36, 0.24, pantallaTex(`@${usuario}`, `ASIENTO ${asiento}`), { px: 500 })
+          : esL ? pantallaComun('luna', 0.36, 0.24, pantallaTex('CLASE LUNA', 'CHOCOLATE: LISTO'), { px: 500 })
+            : pantallaComun('orbita', 0.36, 0.24, pantallaTex('SATURNOID', 'CLASE ÓRBITA'), { px: 500 });
         pan.position.set(-0.36, 1.08, 0); pan.rotation.y = -Math.PI / 2; pan.rotation.x = 0; s.add(pan);
         if (esL) {
           // manta tejida doblada en el asiento y una taza de chocolate caliente en el apoyabrazos
@@ -551,7 +580,7 @@ export function crearInterior(clase, opciones) {
     r.grupo.traverse((n) => {
       if (n.userData.liberar) n.userData.liberar();
       if (n.geometry && !n.geometry.userData?.compartida) n.geometry.dispose?.();
-      if (n.material) { (Array.isArray(n.material) ? n.material : [n.material]).forEach((m) => { if (m.userData.compartida) return; m.map?.dispose(); m.dispose(); }); }
+      if (n.material) { (Array.isArray(n.material) ? n.material : [n.material]).forEach((m) => { if (m.userData.compartida) return; if (!m.map?.userData.compartida) m.map?.dispose(); m.dispose(); }); }
     });
     r.grupo.removeFromParent();
   };

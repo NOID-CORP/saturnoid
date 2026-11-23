@@ -151,7 +151,16 @@ export function crearMundo({ canvas, calidad = 'media', ancho, alto }) {
         const tmp = crearInterior(clase, { asiento, usuario: 'x', ocupantes, info: {}, luces: lucesInterior });
         tmp.grupo.traverse((n) => { if (n.isSprite) n.material.opacity = 0; });
         nave.cuerpo.add(tmp.grupo);
-        try { await (renderer.compileAsync ? renderer.compileAsync(escena, camara) : renderer.compile(escena, camara)); } catch { /* sin compilación previa */ }
+        // Con bloom la escena se dibuja en la capa del composer (no en la pantalla) y three.js usa otros programas
+        // (color lineal, sin tone mapping): se compila para ese destino, si no se compilarían variantes que no se usan.
+        // compile() es síncrono: el destino se devuelve enseguida, antes del siguiente cuadro.
+        const destino = renderer.getRenderTarget();
+        let listo;
+        try {
+          renderer.setRenderTarget(composer ? composer.readBuffer : null);
+          listo = renderer.compileAsync ? renderer.compileAsync(escena, camara) : renderer.compile(escena, camara);
+        } catch { /* sin compilación previa */ } finally { renderer.setRenderTarget(destino); }
+        try { await listo; } catch { /* sin compilación previa */ }
         // las imágenes grandes que comparten todos los interiores (p. ej. el techo de estrellas de Luna) se suben ya
         tmp.grupo.traverse((n) => { if (n.material?.map?.userData.compartida) renderer.initTexture(n.material.map); });
         // sin liberar sus materiales: mientras existan, three.js guarda los programas compilados para el interior real
