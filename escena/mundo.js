@@ -152,6 +152,8 @@ export function crearMundo({ canvas, calidad = 'media', ancho, alto }) {
         tmp.grupo.traverse((n) => { if (n.isSprite) n.material.opacity = 0; });
         nave.cuerpo.add(tmp.grupo);
         try { await (renderer.compileAsync ? renderer.compileAsync(escena, camara) : renderer.compile(escena, camara)); } catch { /* sin compilación previa */ }
+        // las imágenes grandes que comparten todos los interiores (p. ej. el techo de estrellas de Luna) se suben ya
+        tmp.grupo.traverse((n) => { if (n.material?.map?.userData.compartida) renderer.initTexture(n.material.map); });
         // sin liberar sus materiales: mientras existan, three.js guarda los programas compilados para el interior real
         tmp.grupo.removeFromParent(); for (const l of lucesInterior) l.intensity = 0; calentados.push(tmp);
         await new Promise((ok) => setTimeout(ok, 60));

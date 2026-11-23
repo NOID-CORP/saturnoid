@@ -88,6 +88,15 @@ function lienzoCieloLuna() {
   dibujarLuna(x, W * 0.78, H * 0.3, H * 0.13);
   return (cieloLuna = cv);
 }
+// El material del techo también se hace una sola vez (y no se libera): así la imagen de 1620×1080 se sube a la tarjeta
+// gráfica una vez (precalentar lo hace con la página quieta) y entrar a Luna no da un tirón a mitad del vuelo.
+let matCieloLuna = null;
+function materialCieloLuna() {
+  if (matCieloLuna) return matCieloLuna;
+  const t = new THREE.CanvasTexture(lienzoCieloLuna()); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.userData.compartida = true;
+  matCieloLuna = new THREE.MeshBasicMaterial({ map: t, toneMapped: false }); matCieloLuna.userData.compartida = true;
+  return matCieloLuna;
+}
 
 function tagDe(clase) { return CLASES[clase].tag; }
 
@@ -350,8 +359,7 @@ function filas(clase, o) {
   if (esL) {
     // techo de estrellas: un tragaluz que ocupa casi todo el techo, con marco de latón y focos cálidos en el borde
     const cw = ancho - 0.6, cd = fondo - 0.7;
-    const tCielo = new THREE.CanvasTexture(lienzoCieloLuna()); tCielo.colorSpace = THREE.SRGBColorSpace; tCielo.anisotropy = 4;
-    const cieloM = new THREE.Mesh(new THREE.PlaneGeometry(cw, cd), new THREE.MeshBasicMaterial({ map: tCielo, toneMapped: false }));
+    const cieloM = new THREE.Mesh(new THREE.PlaneGeometry(cw, cd), materialCieloLuna());
     cieloM.rotation.x = Math.PI / 2; cieloM.position.set(0, techo - 0.008, cz); g.add(cieloM);
     const laton = mat('#c9a45a', 0.35, 0.8);
     for (const [w, d, x, z] of [[cw + 0.1, 0.06, 0, cz - cd / 2], [cw + 0.1, 0.06, 0, cz + cd / 2], [0.06, cd, -cw / 2, cz], [0.06, cd, cw / 2, cz], [0.04, cd, -0.9, cz], [0.04, cd, 0.9, cz]]) {
