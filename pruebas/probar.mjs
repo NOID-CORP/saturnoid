@@ -11,11 +11,13 @@ const args = process.argv.slice(2);
 const ESCRITORIO = args.includes('--escritorio');
 const SIN3D = args.includes('--sin3d');
 const usuarios = args.filter((a) => !a.startsWith('--'));
-const casos = usuarios.length ? usuarios : ['prueba_0007', '@PRUEBA_0120', 'prueba_0280', 'donangeel', 'noexiste_xyz'];
+// con `node admin/prueba.mjs crear 700`: 0007 Anillo, 0120 Órbita, 0450 Luna, 0650 Turista
+const casos = usuarios.length ? usuarios : ['prueba_0007', '@PRUEBA_0120', 'prueba_0450', 'prueba_0650', 'donangeel', 'noexiste_xyz'];
+const CHROME = process.env.CHROME || (process.platform === 'win32' ? 'C:/Program Files/Google/Chrome/Application/chrome.exe' : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome');
 
 const nav = await chromium.launch({
-  executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  headless: true, args: SIN3D ? ['--disable-3d-apis', '--disable-webgl'] : ['--use-angle=metal', '--ignore-gpu-blocklist', '--enable-gpu'],
+  executablePath: CHROME,
+  headless: true, args: SIN3D ? ['--disable-3d-apis', '--disable-webgl'] : [...(process.platform === 'darwin' ? ['--use-angle=metal'] : []), '--ignore-gpu-blocklist', '--enable-gpu'],
 });
 const ctx = await nav.newContext(ESCRITORIO
   ? { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 }

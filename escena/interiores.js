@@ -1,4 +1,4 @@
-// Interior de cada clase, construido alrededor del asiento buscado, con los vecinos de verdad y sus nametags.
+// Interior de cada clase (Cabina, Anillo, Órbita, Luna, Turista), construido alrededor del asiento buscado, con los vecinos de verdad y sus nametags.
 // Todo va en coordenadas de la nave (se agrega a nave.cuerpo, así vibra con ella). Las ventanas miran a -z.
 // crearInterior(clase, opciones) → { grupo, ruta, miras, pov, actualizar(t), liberar() }
 //   ruta/miras: puntos (afuera → adentro → asiento) y a dónde mira la cámara en cada uno.
@@ -43,6 +43,50 @@ function dibujarPlaneta(x, cx, cy, r) {
   x.strokeStyle = 'rgba(199,216,238,.85)'; x.lineWidth = r * 0.12;
   x.beginPath(); x.ellipse(cx, cy, r * 2.1, r * 0.55, -0.35, 0, Math.PI); x.stroke();
   x.restore();
+}
+
+// ---------- Clase Luna: luna creciente y techo de estrellas (dibujos 2D) ----------
+const LAVANDA = '#CDBCFF';
+
+// Luna creciente con brillo (pantallas y letrero de Clase Luna). Se recorta en un lienzo aparte: así no abre un hueco en el fondo.
+function dibujarLuna(x, cx, cy, r) {
+  const t = Math.ceil(r * 2.4), cv = lienzo(t, t), y = cv.getContext('2d'), c = t / 2;
+  const g = y.createRadialGradient(c - r * 0.3, c - r * 0.3, r * 0.1, c, c, r);
+  g.addColorStop(0, '#fff8e6'); g.addColorStop(1, '#e8d9a8');
+  y.fillStyle = g; y.beginPath(); y.arc(c, c, r, 0, Math.PI * 2); y.fill();
+  y.globalCompositeOperation = 'destination-out';
+  y.beginPath(); y.arc(c + r * 0.45, c - r * 0.2, r * 0.9, 0, Math.PI * 2); y.fill();
+  x.save(); x.shadowColor = 'rgba(255,240,200,.85)'; x.shadowBlur = r * 0.6; x.drawImage(cv, cx - c, cy - c); x.restore();
+}
+
+// Techo de estrellas: cielo de noche con la Vía Láctea en diagonal y una luna. Se dibuja una sola vez (precalentar lo
+// hace con la página quieta) y cada interior de Luna sube el mismo lienzo como textura.
+let cieloLuna = null;
+function lienzoCieloLuna() {
+  if (cieloLuna) return cieloLuna;
+  const W = 1620, H = 1080, k = W / 1800;
+  const cv = lienzo(W, H), x = cv.getContext('2d'), r = mulberry32(77);
+  const fondo = x.createLinearGradient(0, 0, W, H); fondo.addColorStop(0, '#060818'); fondo.addColorStop(1, '#0d0b26');
+  x.fillStyle = fondo; x.fillRect(0, 0, W, H);
+  for (let i = 0; i < 700; i++) {
+    const u = r(), v = (r() - 0.5) * 0.28 + (r() - 0.5) * 0.12;
+    const px = u * W, py = H * (0.85 - 0.7 * u) + v * H, rad = (26 + r() * 40) * k;
+    const g = x.createRadialGradient(px, py, 0, px, py, rad);
+    g.addColorStop(0, `rgba(${(170 + r() * 60) | 0},${(150 + r() * 60) | 0},255,${(0.035 + r() * 0.03).toFixed(3)})`); g.addColorStop(1, 'rgba(0,0,0,0)');
+    x.fillStyle = g; x.fillRect(px - rad, py - rad, rad * 2, rad * 2);
+  }
+  for (let i = 0; i < 1200; i++) {
+    const px = r() * W, py = r() * H, s = (Math.pow(r(), 6) * 3.2 + 0.5) * k, a = (0.45 + r() * 0.55).toFixed(2), tono = r();
+    x.fillStyle = tono < 0.15 ? `rgba(255,214,170,${a})` : tono < 0.3 ? `rgba(190,215,255,${a})` : `rgba(255,255,255,${a})`;
+    x.beginPath(); x.arc(px, py, s, 0, Math.PI * 2); x.fill();
+  }
+  for (let i = 0; i < 14; i++) { // estrellas grandes con destello
+    const px = r() * W, py = r() * H, s = (3 + r() * 3) * k;
+    x.save(); x.shadowColor = '#fff'; x.shadowBlur = 14; x.fillStyle = '#fff'; x.beginPath(); x.arc(px, py, s, 0, Math.PI * 2); x.fill(); x.restore();
+    x.strokeStyle = 'rgba(255,255,255,.5)'; x.lineWidth = 1.5; x.beginPath(); x.moveTo(px - s * 5, py); x.lineTo(px + s * 5, py); x.moveTo(px, py - s * 5); x.lineTo(px, py + s * 5); x.stroke();
+  }
+  dibujarLuna(x, W * 0.78, H * 0.3, H * 0.13);
+  return (cieloLuna = cv);
 }
 
 function tagDe(clase) { return CLASES[clase].tag; }
@@ -228,62 +272,117 @@ function anillo(o) {
   };
 }
 
-// ---------- ÓRBITA y TURISTA (filas) ----------
+// ---------- ÓRBITA, LUNA y TURISTA (filas) ----------
+// Clase Luna es una Órbita de noche: 5 por fila (2 junto a la ventana, pasillo y 3), techo de estrellas, manta tejida
+// en cada asiento, chocolate caliente en el apoyabrazos y luz cálida. Turista tiene la ventanita al motor en el piso.
+const VX_MOTOR = 0.39, VZ_MOTOR = -2.0; // ventanita al motor de Turista: en el pasillo, entre tu fila y la de adelante
+const GEO = {};
+function geosFilas() {
+  if (GEO.manta) return GEO;
+  GEO.manta = new THREE.BoxGeometry(0.42, 0.035, 0.56);
+  GEO.mantaCaida = new THREE.BoxGeometry(0.035, 0.2, 0.56);
+  GEO.taza = new THREE.CylinderGeometry(0.038, 0.032, 0.075, 16);
+  GEO.choco = new THREE.CircleGeometry(0.033, 16); GEO.choco.rotateX(-Math.PI / 2);
+  GEO.vapor = new THREE.PlaneGeometry(0.09, 0.18);
+  GEO.foco = new THREE.SphereGeometry(0.025, 8, 6);
+  for (const k in GEO) GEO[k].userData.compartida = true;
+  return GEO;
+}
+function texturaVapor() {
+  const cv = lienzo(64, 128), x = cv.getContext('2d');
+  const g = x.createRadialGradient(32, 90, 2, 32, 76, 32); g.addColorStop(0, 'rgba(255,255,255,.6)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g; x.fillRect(0, 0, 64, 128);
+  return new THREE.CanvasTexture(cv);
+}
+function texturaManta() { // tejido: franjas tinto / mantequilla / café / azul con punto
+  const cv = lienzo(64, 96), x = cv.getContext('2d');
+  const fr = ['#8c2f39', '#faecb2', '#5a3a22', '#c7d8ee', '#8c2f39']; const h = 96 / fr.length;
+  fr.forEach((c, i) => { x.fillStyle = c; x.fillRect(0, i * h, 64, h + 1); });
+  x.globalAlpha = 0.18; x.fillStyle = '#000';
+  for (let yy = 0; yy < 96; yy += 6) for (let xx = (yy / 6) % 2 ? 0 : 3; xx < 64; xx += 6) x.fillRect(xx, yy, 3, 3);
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
 function filas(clase, o) {
   const { asiento, ocupantes, usuario } = o;
   const g = new THREE.Group(); const S = SECCIONES[clase]; const piso = S.piso, techo = S.techo;
-  const esT = clase === 'turista'; const c = CLASES[clase]; const a0 = leerAsiento(asiento);
-  const PASO = esT ? 0.78 : 1.2; const X0 = -3.0, X1 = 3.0, Z0 = esT ? -3.95 : -4.0, Z1 = -0.05;
-  const colZ = esT ? [-3.55, -3.07, -2.59, -1.41, -0.93, -0.45] : [-3.45, -2.75, -1.45, -0.75];
-  const mPared = esT ? mat('#5b5750', 0.9) : mat('#e9e1d0', 0.8), mPiso = esT ? mat('#3a3631', 0.95) : mat('#5d6470', 0.95);
+  o.grupo = g;
+  const esT = clase === 'turista', esL = clase === 'luna'; const c = CLASES[clase]; const a0 = leerAsiento(asiento);
+  const PASO = esT ? 0.78 : esL ? 1.0 : 1.2; const X0 = -3.0, X1 = 3.0, Z0 = esT ? -3.95 : -4.0, Z1 = esL ? 0.3 : -0.05;
+  const colZ = esT ? [-3.55, -3.07, -2.59, -1.41, -0.93, -0.45] : esL ? [-3.5, -2.85, -1.4, -0.75, -0.1] : [-3.45, -2.75, -1.45, -0.75];
+  const mPared = esT ? mat('#5b5750', 0.9) : esL ? mat('#2a2b52', 0.85) : mat('#e9e1d0', 0.8);
+  const mPiso = esT ? mat('#3a3631', 0.95) : esL ? mat('#3b2a3a', 0.98) : mat('#5d6470', 0.95);
   const r = mulberry32(semilla(asiento));
+  const animar = []; // (t) => void
   // caja del salón
-  const ancho = X1 - X0, fondo = Z1 - Z0, alto = techo - piso;
-  g.add(caja(ancho, 0.05, fondo, mPiso, 0, piso - 0.025, (Z0 + Z1) / 2));
-  g.add(caja(ancho, 0.05, fondo, mPared, 0, techo + 0.025, (Z0 + Z1) / 2));
+  const ancho = X1 - X0, fondo = Z1 - Z0, alto = techo - piso, cz = (Z0 + Z1) / 2;
+  g.add(caja(ancho, 0.05, fondo, mPiso, 0, piso - 0.025, cz));
+  g.add(caja(ancho, 0.05, fondo, mPared, 0, techo + 0.025, cz));
   g.add(caja(ancho, alto, 0.05, mPared, 0, (piso + techo) / 2, Z1));
-  g.add(caja(0.05, alto, fondo, mPared, X1, (piso + techo) / 2, (Z0 + Z1) / 2));
-  g.add(caja(0.05, alto, fondo, mPared, X0, (piso + techo) / 2, (Z0 + Z1) / 2));
+  g.add(caja(0.05, alto, fondo, mPared, X1, (piso + techo) / 2, cz));
+  g.add(caja(0.05, alto, fondo, mPared, X0, (piso + techo) / 2, cz));
   if (esT) {
-    g.add(caja(ancho, alto, 0.05, mPared, 0, (piso + techo) / 2, Z0)); // sin ventana
+    g.add(caja(ancho, alto, 0.05, mPared, 0, (piso + techo) / 2, Z0)); // sin ventana en la pared
     // tubos y ductos
     for (let k = 0; k < 4; k++) {
       const tubo = new THREE.Mesh(new THREE.CylinderGeometry(0.05 + k * 0.012, 0.05 + k * 0.012, ancho, 10), mat(['#7a6e5f', '#8c3a2e', '#6b6f73', '#a8873f'][k], 0.5, 0.5));
       tubo.rotation.z = Math.PI / 2; tubo.position.set(0, techo - 0.12 - k * 0.13, Z0 + 0.12 + (k % 2) * 0.1); g.add(tubo);
     }
-    g.add(caja(ancho, 0.22, 0.3, mat('#4a4640', 0.7, 0.4), 0, techo - 0.15, (Z0 + Z1) / 2));
-    // "aquí iría una ventana"
+    g.add(caja(ancho, 0.22, 0.3, mat('#4a4640', 0.7, 0.4), 0, techo - 0.15, cz));
+    // "aquí iría una ventana" (la de Turista está en el piso)
     const falsa = cartel(1.1, 0.7, (x, W, H) => {
       x.fillStyle = '#5b5750'; x.fillRect(0, 0, W, H);
       x.setLineDash([18, 12]); x.strokeStyle = '#f2e6c8'; x.lineWidth = 6; x.beginPath(); x.ellipse(W / 2, H / 2, W * 0.36, H * 0.38, 0, 0, Math.PI * 2); x.stroke();
-      x.fillStyle = '#f2e6c8'; x.textAlign = 'center'; x.font = fuente(500, H * 0.1); x.fillText('VENTANA:', W / 2, H * 0.45); x.fillText('NO INCLUIDA', W / 2, H * 0.6);
+      x.fillStyle = '#f2e6c8'; x.textAlign = 'center'; x.font = fuente(500, H * 0.1); x.fillText('VENTANA:', W / 2, H * 0.42); x.fillText('NO INCLUIDA', W / 2, H * 0.56);
+      x.fillStyle = C.oro; x.font = fuente(500, H * 0.065); x.fillText('LA TUYA ESTÁ EN EL PISO ↓', W / 2, H * 0.7);
     }, { emisivo: false, px: 300 });
     falsa.position.set(0.4, piso + 1.45, Z0 + 0.03); g.add(falsa);
   } else {
-    // ventana compartida: banda abierta con vidrio y parales
-    const vIn = piso + 1.0, vOut = piso + 2.9;
+    // ventana compartida: banda abierta con vidrio y parales (Luna es más baja: banda más corta)
+    const vIn = piso + (esL ? 0.9 : 1.0), vOut = piso + (esL ? 2.1 : 2.9);
     g.add(caja(ancho, vIn - piso, 0.05, mPared, 0, (piso + vIn) / 2, Z0));
     g.add(caja(ancho, techo - vOut, 0.05, mPared, 0, (vOut + techo) / 2, Z0));
     for (let x = X0; x <= X1 + 0.01; x += 1.0) g.add(caja(0.06, vOut - vIn, 0.09, mat('#2c3038', 0.6, 0.3), x, (vIn + vOut) / 2, Z0));
     const vidrio = new THREE.Mesh(new THREE.PlaneGeometry(ancho, vOut - vIn), new THREE.MeshStandardMaterial({ color: '#cfe3ff', transparent: true, opacity: 0.07, roughness: 0.05, depthWrite: false }));
     vidrio.position.set(0, (vIn + vOut) / 2, Z0 + 0.01); g.add(vidrio);
-    for (let x = X0 + 0.3; x < X1; x += 1.5) g.add(caja(0.9, 0.03, 0.12, new THREE.MeshBasicMaterial({ color: '#fff3dc' }), x, techo - 0.03, -2.1));
+    if (!esL) for (let x = X0 + 0.3; x < X1; x += 1.5) g.add(caja(0.9, 0.03, 0.12, new THREE.MeshBasicMaterial({ color: '#fff3dc' }), x, techo - 0.03, -2.1));
+  }
+  if (esL) {
+    // techo de estrellas: un tragaluz que ocupa casi todo el techo, con marco de latón y focos cálidos en el borde
+    const cw = ancho - 0.6, cd = fondo - 0.7;
+    const tCielo = new THREE.CanvasTexture(lienzoCieloLuna()); tCielo.colorSpace = THREE.SRGBColorSpace; tCielo.anisotropy = 4;
+    const cieloM = new THREE.Mesh(new THREE.PlaneGeometry(cw, cd), new THREE.MeshBasicMaterial({ map: tCielo, toneMapped: false }));
+    cieloM.rotation.x = Math.PI / 2; cieloM.position.set(0, techo - 0.008, cz); g.add(cieloM);
+    const laton = mat('#c9a45a', 0.35, 0.8);
+    for (const [w, d, x, z] of [[cw + 0.1, 0.06, 0, cz - cd / 2], [cw + 0.1, 0.06, 0, cz + cd / 2], [0.06, cd, -cw / 2, cz], [0.06, cd, cw / 2, cz], [0.04, cd, -0.9, cz], [0.04, cd, 0.9, cz]]) {
+      g.add(caja(w, 0.05, d, laton, x, techo - 0.03, z));
+    }
+    const G = geosFilas();
+    const mFocos = [0, 1].map(() => new THREE.MeshBasicMaterial({ color: '#ffd08a', toneMapped: false }));
+    for (let k = 0; k < 22; k++) {
+      const lado = k % 2 ? 1 : -1, x = -cw / 2 + 0.15 + (k >> 1) * (cw - 0.3) / 10;
+      const f = new THREE.Mesh(G.foco, mFocos[(k >> 1) % 2]); f.position.set(x, techo - 0.09, cz + lado * (cd / 2 - 0.08)); g.add(f);
+    }
+    animar.push((t) => mFocos.forEach((m, i) => m.color.setRGB(1, 0.82, 0.55).multiplyScalar(0.85 + 0.15 * Math.sin(t * 2.1 + i * 2.4))));
   }
   // pared de adelante (+x): cartel de la clase
   const frente = cartel(fondo * 0.92, alto * (esT ? 0.5 : 0.62), (x, W, H) => {
-    x.fillStyle = esT ? '#4D0C10' : '#1d2633'; x.fillRect(0, 0, W, H);
+    x.fillStyle = esT ? '#4D0C10' : esL ? '#16143a' : '#1d2633'; x.fillRect(0, 0, W, H);
     x.textAlign = 'center';
     if (esT) {
       x.fillStyle = C.oro; x.font = fuente(800, H * 0.13, 'Panchang'); x.fillText('CADA EPISODIO', W / 2, H * 0.26);
       x.font = fuente(800, H * 0.2, 'Panchang'); x.fillText('3 DE AQUÍ', W / 2, H * 0.5);
       x.font = fuente(800, H * 0.13, 'Panchang'); x.fillText('SUBEN A CLASE ANILLO', W / 2, H * 0.7);
       x.fillStyle = '#f2e6c8'; x.font = fuente(500, H * 0.07); x.fillText('BAÑO: 1 PARA 200 · AL FONDO', W / 2, H * 0.9);
+    } else if (esL) {
+      dibujarLuna(x, W * 0.5, H * 0.4, H * 0.2);
+      x.fillStyle = LAVANDA; x.font = fuente(800, H * 0.11, 'Panchang'); x.fillText('CLASE LUNA', W / 2, H * 0.86);
     } else {
       dibujarPlaneta(x, W * 0.5, H * 0.45, H * 0.17);
       x.fillStyle = C.plata; x.font = fuente(800, H * 0.11, 'Panchang'); x.fillText('CLASE ÓRBITA', W / 2, H * 0.86);
     }
   }, { px: 260 });
-  frente.position.set(X1 - 0.03, piso + alto * (esT ? 0.7 : 0.55), (Z0 + Z1) / 2); frente.rotation.y = -Math.PI / 2; g.add(frente);
+  frente.position.set(X1 - 0.03, piso + alto * (esT ? 0.7 : 0.55), cz); frente.rotation.y = -Math.PI / 2; g.add(frente);
   if (esT) {
     const avisos = [['RUIDO DE MOTORES: INCLUIDO', 1.7, -0.08, 1.4], ['BARRAS DE PROTEÍNA · SABOR: SÍ', -1.6, -0.08, 1.5]];
     for (const [txt, x0, zz, w] of avisos) {
@@ -292,10 +391,50 @@ function filas(clase, o) {
     }
     const bano = cartel(0.9, 0.34, (x, W, H) => { x.fillStyle = '#111'; x.fillRect(0, 0, W, H); x.fillStyle = '#ff4b3e'; x.textAlign = 'center'; x.font = fuente(500, H * 0.32); x.fillText('BAÑO 1/200', W / 2, H * 0.42); x.font = fuente(500, H * 0.24); x.fillText('FILA: 147', W / 2, H * 0.8); }, { px: 300 });
     bano.position.set(-1.7, piso + 1.75, Z0 + 0.03); g.add(bano);
+    // la ventanita al motor encendido, en el piso del pasillo (con aro de latón y placa)
+    const uFuego = { uT: { value: 0 } };
+    const fuego = new THREE.Mesh(new THREE.CircleGeometry(0.3, 48), new THREE.ShaderMaterial({
+      uniforms: uFuego, toneMapped: false,
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+      fragmentShader: `uniform float uT; varying vec2 vUv;
+        float h(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }
+        float n(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f); return mix(mix(h(i),h(i+vec2(1,0)),f.x), mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x), f.y); }
+        void main(){
+          vec2 p = vUv - 0.5; float r = length(p)*2.0; float a = atan(p.y, p.x);
+          float rem = n(vec2(a*3.0 + uT*2.5, r*5.0 - uT*7.0)) * 0.6 + n(vec2(a*7.0 - uT*4.0, r*11.0 - uT*13.0)) * 0.4;
+          float calor = clamp(1.25 - r*1.1 + rem*0.55, 0.0, 1.6);
+          vec3 c = mix(vec3(0.35,0.05,0.0), vec3(1.0,0.45,0.08), smoothstep(0.2,0.8,calor));
+          c = mix(c, vec3(1.0,0.92,0.6), smoothstep(0.95,1.4,calor));
+          c *= 1.0 - smoothstep(0.92,1.0,r)*0.6;
+          gl_FragColor = vec4(c*1.6, 1.0);
+        }`,
+    }));
+    fuego.rotation.x = -Math.PI / 2; fuego.position.set(VX_MOTOR, piso + 0.006, VZ_MOTOR); g.add(fuego);
+    const laton = mat('#c9a45a', 0.35, 0.8);
+    const aro = new THREE.Mesh(new THREE.TorusGeometry(0.31, 0.035, 12, 48), laton); aro.rotation.x = Math.PI / 2; aro.position.set(VX_MOTOR, piso + 0.02, VZ_MOTOR); g.add(aro);
+    const geoTornillo = new THREE.SphereGeometry(0.014, 8, 6);
+    for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; const tor = new THREE.Mesh(geoTornillo, laton); tor.position.set(VX_MOTOR + Math.cos(a) * 0.31, piso + 0.05, VZ_MOTOR + Math.sin(a) * 0.31); g.add(tor); }
+    const placa = cartel(0.62, 0.11, (x, W, H) => { x.fillStyle = '#c9a45a'; x.fillRect(0, 0, W, H); x.fillStyle = '#2a1608'; x.textAlign = 'center'; x.font = fuente(500, H * 0.5); x.fillText('★ VISTA AL MOTOR ★', W / 2, H * 0.68); }, { px: 1000 });
+    placa.material.color.setScalar(0.85);
+    placa.rotation.x = -Math.PI / 2; placa.rotation.z = -Math.PI / 2; placa.position.set(VX_MOTOR - 0.45, piso + 0.008, VZ_MOTOR); g.add(placa);
+    const luzFuego = luz(o, 1, '#ff8a3d', 1.6, 3.2, VX_MOTOR, piso + 0.35, VZ_MOTOR);
+    animar.push((t) => { uFuego.uT.value = t; luzFuego.intensity = 1.6 * (0.85 + 0.15 * Math.sin(t * 17) * Math.sin(t * 7.3)); });
   }
   // filas de asientos (la del pasajero y dos adelante/atrás). Fila 1 va adelante (+x).
-  const mA = esT ? mat('#6f6a62', 0.85) : mat('#8e949e', 0.45, 0.35), mB = esT ? mat('#6d665c', 0.9) : mat(C.azul, 0.5);
-  const pantallaTex = (txt, sub) => (x, W, H) => { x.fillStyle = '#0b1220'; x.fillRect(0, 0, W, H); dibujarPlaneta(x, W * 0.5, H * 0.42, H * 0.18); x.fillStyle = C.plata; x.textAlign = 'center'; x.font = fuente(500, H * 0.12); x.fillText(txt, W / 2, H * 0.78); x.font = fuente(500, H * 0.09); x.fillStyle = C.azul; x.fillText(sub, W / 2, H * 0.92); };
+  const mA = esT ? mat('#6f6a62', 0.85) : mat('#8e949e', 0.45, 0.35), mB = esT ? mat('#6d665c', 0.9) : esL ? mat('#b7a6e8', 0.5) : mat(C.azul, 0.5);
+  const pantallaTex = (txt, sub) => (x, W, H) => {
+    x.fillStyle = esL ? '#0c0d26' : '#0b1220'; x.fillRect(0, 0, W, H);
+    if (esL) dibujarLuna(x, W * 0.5, H * 0.4, H * 0.18); else dibujarPlaneta(x, W * 0.5, H * 0.42, H * 0.18);
+    x.fillStyle = esL ? LAVANDA : C.plata; x.textAlign = 'center'; x.font = fuente(500, H * 0.12); x.fillText(txt, W / 2, H * 0.78);
+    x.font = fuente(500, H * 0.09); x.fillStyle = esL ? '#f6c9a0' : C.azul; x.fillText(sub, W / 2, H * 0.92);
+  };
+  let mManta = null, mTaza = null, mChoco = null, mVapor = null;
+  if (esL) {
+    mManta = new THREE.MeshStandardMaterial({ map: texturaManta(), roughness: 0.95 });
+    mTaza = mat('#f4ede0', 0.35); mChoco = mat('#4a2412', 0.4);
+    mVapor = new THREE.MeshBasicMaterial({ map: texturaVapor(), transparent: true, depthWrite: false, opacity: 0.3, side: THREE.DoubleSide });
+    animar.push((t) => { mVapor.opacity = 0.22 + 0.1 * Math.sin(t * 1.7); });
+  }
   let lugarPropio = null;
   for (let df = -2; df <= 2; df++) {
     const fila = a0.fila + df; if (fila < 1) continue;
@@ -312,16 +451,27 @@ function filas(clase, o) {
         // barra de proteína en el bolsillo del asiento de adelante (se ve desde atrás)
         s.add(caja(0.02, 0.12, 0.05, mat('#c9a227', 0.6), -0.21, 0.66, 0.08));
       } else {
+        if (esL) s.scale.z = 0.93; // 5 por fila: un poco más angostos
         s.add(caja(0.62, 0.14, 0.62, mA, 0.08, 0.46, 0, 0.06));
         const resp = caja(0.12, 0.9, 0.62, mA, -0.26, 0.95, 0, 0.06); resp.rotation.z = 0.18; s.add(resp);
         s.add(caja(0.14, 0.08, 0.64, mB, -0.33, 1.38, 0, 0.03));
         s.add(caja(0.5, 0.1, 0.1, mB, 0.06, 0.66, 0.3, 0.03)); s.add(caja(0.5, 0.1, 0.1, mB, 0.06, 0.66, -0.3, 0.03));
         // pantalla propia en el respaldo (mira hacia la fila de atrás)
         const esMia = df === -1 && col === a0.col;
-        const pan = cartel(0.36, 0.24, esMia ? pantallaTex(`@${usuario}`, `ASIENTO ${asiento}`) : pantallaTex('SATURNOID', 'CLASE ÓRBITA'), { px: 500 });
+        const pan = cartel(0.36, 0.24, esMia ? pantallaTex(`@${usuario}`, `ASIENTO ${asiento}`) : esL ? pantallaTex('CLASE LUNA', 'CHOCOLATE: LISTO') : pantallaTex('SATURNOID', 'CLASE ÓRBITA'), { px: 500 });
         pan.position.set(-0.36, 1.08, 0); pan.rotation.y = -Math.PI / 2; pan.rotation.x = 0; s.add(pan);
-        // comida caliente en la bandeja
-        if (df >= 0) {
+        if (esL) {
+          // manta tejida doblada en el asiento y una taza de chocolate caliente en el apoyabrazos
+          const G = geosFilas();
+          const m1 = new THREE.Mesh(G.manta, mManta); m1.position.set(0.1, 0.55, 0); s.add(m1);
+          const m2 = new THREE.Mesh(G.mantaCaida, mManta); m2.position.set(0.32, 0.46, 0); s.add(m2);
+          const taza = new THREE.Mesh(G.taza, mTaza); taza.position.set(0.12, 0.75, 0.3); s.add(taza);
+          const choco = new THREE.Mesh(G.choco, mChoco); choco.position.set(0.12, 0.786, 0.3); s.add(choco);
+          if (Math.abs(df) <= 1 && (col + fila) % 2 === 0) {
+            for (const giro of [0, Math.PI / 2]) { const v = new THREE.Mesh(G.vapor, mVapor); v.position.set(0.12, 0.89, 0.3); v.rotation.y = giro; s.add(v); }
+          }
+        } else if (df >= 0) {
+          // comida caliente en la bandeja
           const bandeja = caja(0.26, 0.02, 0.36, mat('#ddd', 0.4), 0.38, 0.74, 0); s.add(bandeja);
           const plato = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.03, 18), mat('#fff', 0.3)); plato.position.set(0.38, 0.77, -0.06); s.add(plato);
           const comida = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), mat('#c0592f', 0.6)); comida.position.set(0.38, 0.78, -0.06); s.add(comida);
@@ -331,21 +481,21 @@ function filas(clase, o) {
       if (cod === asiento) { lugarPropio = sentado; continue; }
       const oc = ocupantes.get(cod);
       if (oc) {
-        const p = crearPasajero(esT ? '#b0602e' : '#9aa3ae', esT ? '#4a220e' : C.azul); p.position.copy(sentado); g.add(p);
+        const p = crearPasajero(esT ? '#b0602e' : '#9aa3ae', esT ? '#4a220e' : esL ? '#7d6bc4' : C.azul); p.position.copy(sentado); g.add(p);
         if (Math.abs(df) <= 1) { const nt = crearNametag(oc.usuario, tagDe(clase)); nt.position.copy(sentado).add(V(0, 1.08 + (col % 2) * 0.13, 0)); g.add(nt); }
       }
     }
   }
-  // luz: en turista, un tubo que parpadea
-  const tubo = caja(1.4, 0.05, 0.08, new THREE.MeshBasicMaterial({ color: esT ? '#e8f4ff' : '#fff3dc' }), 0, techo - 0.05, -2.0);
-  g.add(tubo);
-  const BASE_LUZ = esT ? 1.4 : 2.0;
-  o.grupo = g; const luzT = luz(o, 0, esT ? '#dfefff' : '#f6f1e8', BASE_LUZ, 9, 0, techo - 0.1, -2.0);
+  // luz: en Turista, un tubo que parpadea; en Luna, luz cálida y un poco de luz de luna (sin tubo: arriba están las estrellas)
+  const tubo = esL ? null : caja(1.4, 0.05, 0.08, new THREE.MeshBasicMaterial({ color: esT ? '#e8f4ff' : '#fff3dc' }), 0, techo - 0.05, -2.0);
+  if (tubo) g.add(tubo);
+  const BASE_LUZ = esT ? 1.4 : esL ? 2.2 : 2.0;
+  const luzT = esL ? luz(o, 0, '#ffc98a', BASE_LUZ, 8, 0, techo - 0.4, cz) : luz(o, 0, esT ? '#dfefff' : '#f6f1e8', BASE_LUZ, 9, 0, techo - 0.1, -2.0);
+  if (esL) luz(o, 1, '#9fb2ff', 1.2, 6, 1.6, techo - 0.2, cz - 0.6);
   const cabeza = lugarPropio.clone().add(V(-0.05, esT ? 0.9 : 0.8, 0));
-  const pasillo = esT ? -2.0 : -2.1;
-  const huecoX = esT ? PASO / 2 : PASO / 2;
-  const yViaje = esT ? techo - 0.5 : piso + 1.95;
-  const entrada = esT ? V(huecoX, piso + 1.5, -6) : V(huecoX, piso + 1.9, -5.2);
+  const huecoX = PASO / 2;
+  const yViaje = esT ? techo - 0.5 : piso + (esL ? 1.6 : 1.95);
+  const entrada = esT ? V(huecoX, piso + 1.5, -6) : V(huecoX, piso + (esL ? 1.5 : 1.9), -5.2);
   const ruta = [
     V(huecoX, piso + 1.9, -15), entrada,
     V(huecoX, yViaje, Z0 + 0.5), V(huecoX, yViaje, cabeza.z), V(cabeza.x + 0.15, cabeza.y + 0.15, cabeza.z), cabeza,
@@ -354,14 +504,23 @@ function filas(clase, o) {
     V(0, piso + 1.5, 0), V(huecoX, piso + 1.4, 0), V(huecoX, piso + 1.0, cabeza.z), V(cabeza.x, piso + 0.6, cabeza.z),
     V(3, cabeza.y - 0.1, cabeza.z), V(3, cabeza.y - 0.12, esT ? cabeza.z : (cabeza.z - 0.9)),
   ];
-  const centro = esT ? V(3, cabeza.y + 0.05, (Z0 + Z1) / 2) : V(cabeza.x - 0.6, cabeza.y + 0.9, Z0 - 3.0);
+  let pov;
+  if (esT) {
+    // el lado del pasillo mira hacia abajo, a la ventanita al motor
+    const motor = V(VX_MOTOR, piso + 0.1, VZ_MOTOR);
+    const izq = V(cabeza.x + 0.4, cabeza.y - 0.15, Z0 - 2), der = V(cabeza.x + 0.4, cabeza.y - 0.15, Z1 + 2);
+    pov = { pos: cabeza, centro: V(3, cabeza.y + 0.05, cz), izq: cabeza.z < VZ_MOTOR ? izq : motor, der: cabeza.z < VZ_MOTOR ? motor : der };
+  } else if (esL) {
+    // de frente: el letrero y el techo de estrellas; luego la ventana y el lado de adentro
+    pov = { pos: cabeza, centro: V(cabeza.x + 3, cabeza.y + 0.8, cz), izq: V(cabeza.x + 0.8, cabeza.y + 0.2, Z0 - 2), der: V(cabeza.x + 2.0, cabeza.y + 0.1, Z1 + 1.5) };
+  } else {
+    pov = { pos: cabeza, centro: V(cabeza.x - 0.6, cabeza.y + 0.9, Z0 - 3.0), izq: V(cabeza.x + 2.4, cabeza.y + 0.15, Z0 + 0.2), der: V(cabeza.x + 2.0, cabeza.y + 0.1, Z1 + 1.5) };
+  }
   return {
-    grupo: g, ruta, miras,
-    pov: esT
-      ? { pos: cabeza, centro, izq: V(cabeza.x + 0.4, cabeza.y - 0.15, Z0 - 2), der: V(cabeza.x + 0.4, cabeza.y - 0.15, Z1 + 2) }
-      : { pos: cabeza, centro, izq: V(cabeza.x + 2.4, cabeza.y + 0.15, Z0 + 0.2), der: V(cabeza.x + 2.0, cabeza.y + 0.1, Z1 + 1.5) },
+    grupo: g, ruta, miras, pov,
     sacudida: esT ? 0.006 : 0,
     actualizar(t) {
+      for (const f of animar) f(t);
       if (!esT) return;
       // parpadeo determinista: casi siempre prendido, con cortes cortos
       const f = Math.sin(t * 13.1) + Math.sin(t * 7.3 + 1.2) + Math.sin(t * 29.7 + 0.4);

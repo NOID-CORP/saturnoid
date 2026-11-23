@@ -1,4 +1,5 @@
-// La nave de Saturnoid. De abajo arriba: motores, Turista (sin ventanas, junto a los motores), Órbita (ventanas),
+// La nave de Saturnoid. De abajo arriba: motores, Turista (junto a los motores, con una ventanita al motor en el piso),
+// Clase Luna (techo de estrellas, ojos de buey pequeños), Órbita (ventanas),
 // Clase Anillo (cúpulas de cristal sobre un anillo, como el del planeta) y la Cabina de mando (ventanal) bajo la punta.
 // actualizar(t, nivel): nivel es continuo 0..3 (0 en espera, 1 motor 1, 2 motor 2, 3 despegue) para poder mezclar.
 import * as THREE from 'three';
@@ -6,7 +7,8 @@ import { mulberry32, lienzo, temblor, clamp, C } from './util.js';
 
 // Alturas de cada sección (metros, en coordenadas de la nave). El piso de cada interior va en .piso.
 export const SECCIONES = {
-  turista: { piso: 7.0, techo: 9.6, desde: 6, hasta: 14 },
+  turista: { piso: 7.0, techo: 9.6, desde: 6, hasta: 10.4 },
+  luna: { piso: 11.0, techo: 13.6, desde: 10.4, hasta: 14 },
   orbita: { piso: 15.0, techo: 18.4, desde: 14, hasta: 26 },
   anillo: { piso: 27.6, techo: 32.4, desde: 26, hasta: 34 },
   cabina: { piso: 35.0, techo: 39.6, desde: 34, hasta: 42 },
@@ -53,12 +55,12 @@ function texturasCasco() {
   x.fillText('NOID', uPx(0.25), yPx(44.6));
   // rótulos de cada sección (frente, a la izquierda del nombre)
   x.font = '500 20px "DM Mono", monospace'; x.fillStyle = 'rgba(54,32,17,.85)';
-  const rot = [['CABINA DE MANDO', 40.6], ['CLASE ANILLO', 33.2], ['CLASE ÓRBITA', 25.2], ['TURISTA', 13.2]];
+  const rot = [['CABINA DE MANDO', 40.6], ['CLASE ANILLO', 33.2], ['CLASE ÓRBITA', 25.2], ['CLASE LUNA', 13.2], ['TURISTA', 9.8]];
   for (const [t, y] of rot) x.fillText(t, uPx(0.135), yPx(y));
-  x.font = '500 15px "DM Mono", monospace'; x.fillText('(SIN VENTANAS)', uPx(0.135), yPx(12.6));
-  // rejillas de Turista
+  x.font = '500 15px "DM Mono", monospace'; x.fillText('(CON VENTANITA AL MOTOR)', uPx(0.135), yPx(9.35));
+  // rejillas de Turista (debajo de su rótulo)
   x.fillStyle = 'rgba(40,28,20,.55)';
-  for (let k = 0; k < 12; k++) for (let j = 0; j < 7; j++) x.fillRect(uPx(k / 12 + 0.02), yPx(10.6 - j * 0.32), 28, 4);
+  for (let k = 0; k < 12; k++) for (let j = 0; j < 5; j++) x.fillRect(uPx(k / 12 + 0.02), yPx(8.9 - j * 0.32), 28, 4);
   // ventanas de Órbita: dos filas de ojos de buey alrededor
   const ventana = (u, y, rx, ry, color, glow) => {
     x.fillStyle = '#20140c'; x.beginPath(); x.ellipse(uPx(u), yPx(y), rx + 5, ry + 5, 0, 0, Math.PI * 2); x.fill();
@@ -68,6 +70,11 @@ function texturasCasco() {
   for (let k = 0; k < 28; k++) {
     const u = (k + 0.5) / 28; if (Math.abs(u - 0.25) < 0.045) continue;
     ventana(u, 17.0, 11, 13, '#f3c886', '#ffbf66'); ventana(u, 22.6, 11, 13, '#f3c886', '#b97a38');
+  }
+  // Clase Luna: una fila de ojos de buey pequeños, con la luz cálida y lavanda de adentro
+  for (let k = 0; k < 28; k++) {
+    const u = (k + 0.5) / 28; if (Math.abs(u - 0.25) < 0.045) continue;
+    ventana(u, 12.4, 7, 8, '#e6d6ff', '#a58fe6');
   }
   // ventanal de la cabina (vuelta completa, vidrio oscuro con brillo azul)
   x.fillStyle = '#20140c'; x.fillRect(0, yPx(38.9), W, yPx(36.1) - yPx(38.9));

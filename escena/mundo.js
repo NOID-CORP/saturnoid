@@ -144,10 +144,10 @@ export function crearMundo({ canvas, calidad = 'media', ancho, alto }) {
     // Prepara de antemano los programas de los interiores (cuando la página está quieta), para que el primer
     // vuelo no se congele compilando. No se ve nada: los nametags van transparentes y lo demás queda dentro del casco.
     async precalentar() {
-      const muestras = { cabina: 'C-02', anillo: 'A-03', orbita: 'O-03B', turista: 'T-003B' };
+      const muestras = { cabina: 'C-02', anillo: 'A-03', orbita: 'O-03B', luna: 'L-03B', turista: 'T-003B' };
       for (const [clase, asiento] of Object.entries(muestras)) {
         if (interior) return; // alguien ya buscó: no estorbar
-        const ocupantes = new Map(['C-03', 'A-02', 'O-02B', 'T-002B'].map((c) => [c, { usuario: 'x' }]));
+        const ocupantes = new Map(['C-03', 'A-02', 'O-02B', 'L-02B', 'T-002B'].map((c) => [c, { usuario: 'x' }]));
         const tmp = crearInterior(clase, { asiento, usuario: 'x', ocupantes, info: {}, luces: lucesInterior });
         tmp.grupo.traverse((n) => { if (n.isSprite) n.material.opacity = 0; });
         nave.cuerpo.add(tmp.grupo);

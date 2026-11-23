@@ -5,9 +5,10 @@ export const CLASES = {
   cabina: { nombre: 'Cabina de mando', corto: 'Cabina', letra: 'C', tag: 'cabina' },
   anillo: { nombre: 'Clase Anillo', corto: 'Anillo', letra: 'A', tag: 'oro' },
   orbita: { nombre: 'Clase Órbita', corto: 'Órbita', letra: 'O', tag: 'plata', porFila: 4, letras: 'ABCD' },
+  luna: { nombre: 'Clase Luna', corto: 'Luna', letra: 'L', tag: 'lavanda', porFila: 5, letras: 'ABCDE' },
   turista: { nombre: 'Turista', corto: 'Turista', letra: 'T', tag: 'turista', porFila: 6, letras: 'ABCDEF' },
 };
-export const ORDEN_CLASES = ['cabina', 'anillo', 'orbita', 'turista'];
+export const ORDEN_CLASES = ['cabina', 'anillo', 'orbita', 'luna', 'turista'];
 
 const pad = (n, k) => String(n).padStart(k, '0');
 
@@ -17,14 +18,14 @@ export function codigoAsiento(clase, i) {
   if (clase === 'anillo') return `A-${pad(i + 1, 2)}`;
   const c = CLASES[clase];
   const fila = Math.floor(i / c.porFila) + 1;
-  return `${c.letra}-${pad(fila, clase === 'orbita' ? 2 : 3)}${c.letras[i % c.porFila]}`;
+  return `${c.letra}-${pad(fila, clase === 'turista' ? 3 : 2)}${c.letras[i % c.porFila]}`;
 }
 
 // 'O-12B' → { clase: 'orbita', i: 45, fila: 12, col: 1 }
 export function leerAsiento(codigo) {
-  const m = /^([CAOT])-(\d+)([A-F]?)$/.exec(String(codigo || '').toUpperCase());
+  const m = /^([CAOLT])-(\d+)([A-F]?)$/.exec(String(codigo || '').toUpperCase());
   if (!m) return null;
-  const clase = { C: 'cabina', A: 'anillo', O: 'orbita', T: 'turista' }[m[1]];
+  const clase = { C: 'cabina', A: 'anillo', O: 'orbita', L: 'luna', T: 'turista' }[m[1]];
   const n = parseInt(m[2], 10);
   if (clase === 'cabina' || clase === 'anillo') return { clase, i: n - 1, fila: n, col: 0 };
   const c = CLASES[clase];

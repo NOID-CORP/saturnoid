@@ -6,7 +6,7 @@
 
 :root {
   --cafe: #362011; --cafe-osc: #1e1209; --noche: #0b0a10; --tinto: #4D0C10; --tinto-claro: #8a2a2e;
-  --azul: #C7D8EE; --mant: #FAECB2; --crema: #EFE6D2; --oro: #F2C14E; --plata: #D9DEE6;
+  --azul: #C7D8EE; --mant: #FAECB2; --crema: #EFE6D2; --oro: #F2C14E; --plata: #D9DEE6; --lavanda: #CDBCFF;
   --texto: #F4ECDD; --suave: rgba(244, 236, 221, .66); --linea: rgba(250, 236, 178, .16);
   --panel: rgba(30, 18, 9, .86);
   --mono: "DM Mono", ui-monospace, monospace; --ancha: "Panchang", "Switzer", sans-serif; --texto-f: "Switzer", system-ui, sans-serif;
@@ -37,6 +37,7 @@ body.fundido #velo { opacity: 1; }
 #barra a { pointer-events: auto; text-decoration: none; }
 #barra .marca b { font: 800 13px/1 var(--ancha); letter-spacing: .08em; color: var(--mant); }
 #barra .marca span { margin-left: .5em; color: var(--azul); }
+#barra .marca span::before { content: '· '; }
 #barra { transition: background .3s; }
 #barra.solida { background: rgba(11,10,16,.88); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 #barra .marca { white-space: nowrap; }
@@ -44,6 +45,8 @@ body.fundido #velo { opacity: 1; }
 #barra .serie .dominio { text-transform: none; letter-spacing: .04em; color: var(--mant); }
 #barra .serie:hover, #barra .serie:focus-visible { color: var(--texto); border-color: rgba(250,236,178,.4); background: rgba(11,10,16,.6); }
 @media (max-width: 520px) { #barra .serie .serie-de { display: none; } }
+/* celular: «EP. 1 · DÍA 1» va debajo de SATURNOID (en una línea no cabe junto a noidcorp.com) */
+@media (max-width: 480px) { #barra .marca { display: flex; flex-direction: column; gap: 5px; } #barra .marca span { margin-left: 0; font-size: 11px; letter-spacing: .14em; } #barra .marca span::before { content: none; } }
 @media (max-width: 360px) { #barra .serie { padding: 7px 9px; } #barra .serie .dominio { letter-spacing: 0; } }
 #aviso-prueba { pointer-events: none; position: fixed; top: calc(env(safe-area-inset-top) + 50px); left: 50%; transform: translateX(-50%); z-index: 20; white-space: nowrap;
   font: 500 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: #1e1209; background: var(--oro); padding: 8px 12px; border-radius: 6px; }
@@ -58,6 +61,8 @@ main { position: relative; z-index: 3; }
 .punto { width: 10px; height: 10px; flex: none; border-radius: 50%; background: var(--mant); box-shadow: 0 0 0 0 rgba(250,236,178,.6); animation: latido 1.8s infinite; }
 body[data-nivel="1"] .punto, body[data-nivel="2"] .punto, body[data-nivel="3"] .punto { background: #ff8a3d; box-shadow: 0 0 0 0 rgba(255,138,61,.6); }
 @keyframes latido { 70% { box-shadow: 0 0 0 12px rgba(250,236,178,0); } 100% { box-shadow: 0 0 0 0 rgba(250,236,178,0); } }
+.etq-fila { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.etq-fila .tripulantes { color: var(--suave); white-space: nowrap; }
 .contador .cifra { display: flex; align-items: baseline; gap: 10px; margin: 4px 0 10px; }
 .contador .cifra b { font: 800 clamp(48px, 15vw, 84px)/.95 var(--ancha); color: var(--texto); font-variant-numeric: tabular-nums; }
 .contador .cifra span { font: 500 13px/1.3 var(--mono); color: var(--suave); letter-spacing: .06em; }
@@ -96,17 +101,20 @@ body[data-nivel="1"] .punto, body[data-nivel="2"] .punto, body[data-nivel="3"] .
 .clase ul { margin: 0 0 10px; padding-left: 18px; }
 .clase li { margin: 3px 0; }
 .clase .quien { margin: 0 0 6px; }
+.clase .orden { margin: 0 0 8px; font: 500 11px/1.3 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--c); }
 .clase .llegar { margin: 0; font-size: 14px; color: var(--suave); }
 .clase .llegar b { color: var(--texto); font-weight: 600; }
 .clase { --c: var(--texto); }
 .cupo { flex: none; font: 500 11px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--c); color: var(--c); }
 .cupo.llena { background: var(--c); color: var(--cafe-osc); }
-.clase.cabina { --c: var(--azul); } .clase.anillo { --c: var(--oro); } .clase.orbita { --c: var(--plata); } .clase.turista { --c: rgba(244,236,221,.7); }
+.clase.cabina { --c: var(--azul); } .clase.anillo { --c: var(--oro); } .clase.orbita { --c: var(--plata); } .clase.luna { --c: var(--lavanda); } .clase.turista { --c: rgba(244,236,221,.7); }
 .clase.cabina h3 { color: var(--azul); }
 .clase.anillo { border-color: rgba(242,193,78,.45); background: linear-gradient(160deg, rgba(242,193,78,.13), rgba(11,10,16,.42) 60%); }
 .clase.anillo h3 { color: var(--oro); }
 .clase.orbita { border-color: rgba(217,222,230,.3); }
 .clase.orbita h3 { color: var(--plata); }
+.clase.luna { border-color: rgba(205,188,255,.35); background: linear-gradient(160deg, rgba(205,188,255,.1), rgba(11,10,16,.42) 60%); }
+.clase.luna h3 { color: var(--lavanda); }
 .clase.turista { border-style: dashed; }
 .clase.turista h3 { color: #f2e6c8; }
 .ascenso { text-align: left; }
@@ -152,6 +160,7 @@ body.en-asiento, body.volando { overflow: hidden; }
 .pista { margin: 10px 0 0; text-align: center; font: 500 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--suave); }
 .panel-asiento[data-clase="anillo"] .clase-chip, .panel-asiento[data-clase="anillo"] h2 { color: var(--oro); }
 .panel-asiento[data-clase="orbita"] .clase-chip, .panel-asiento[data-clase="orbita"] h2 { color: var(--plata); }
+.panel-asiento[data-clase="luna"] .clase-chip, .panel-asiento[data-clase="luna"] h2 { color: var(--lavanda); }
 .panel-asiento[data-clase="cabina"] .clase-chip, .panel-asiento[data-clase="cabina"] h2 { color: var(--azul); }
 .panel-asiento[data-clase="turista"] .clase-chip { color: #f2e6c8; }
 .mapa svg { width: 100%; height: auto; display: block; margin-bottom: 10px; }
@@ -187,6 +196,7 @@ body.en-asiento, body.volando { overflow: hidden; }
   .heroe { max-width: 520px; justify-content: center; padding: 120px 40px 60px; background: linear-gradient(90deg, rgba(11,10,16,.92) 0%, rgba(11,10,16,.7) 70%, rgba(11,10,16,0) 100%); }
   .hoja { padding-left: 40px; padding-right: 40px; }
   .clases { grid-template-columns: 1fr 1fr; }
+  .clase.cabina { grid-column: 1 / -1; } /* arriba a lo ancho: las 4 clases de pasajeros quedan de a 2 */
   .panel-asiento { align-items: flex-start; justify-content: flex-end; padding: 0 40px 40px; }
   .panel-asiento .tarjeta { margin: 0; max-width: 440px; }
   .volver { left: 40px; }

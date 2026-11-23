@@ -1,16 +1,18 @@
 #!/usr/bin/env node
 // Ver o cambiar el estado de la serie (lo que la web usa para episodio, enlace del reel, metas y cupos).
 //   node admin/estado.mjs                                   → muestra el estado y los contadores reales
-//   node admin/estado.mjs episodio=2 reel=https://www.instagram.com/reel/XXXX/
-//   node admin/estado.mjs metas=50,200,1000 anillo=100 orbita=300 turista=600 investigadora="Mery Orión"
+//   node admin/estado.mjs episodio=2 reel=https://www.instagram.com/reel/XXXX/   (dia=N solo si el «DÍA» no es el episodio)
+//   node admin/estado.mjs metas=50,200,1000 anillo=100 orbita=300 luna=200 turista=400 investigadora="Mery Orión"
 import { sql, lit, preguntar, leerEstado } from './lib.mjs';
 
 const CAMPOS = {
   episodio: ['episodio_actual', (v) => parseInt(v, 10)],
+  dia: ['dia_actual', (v) => (v === '-' ? null : parseInt(v, 10))], // vacío (dia=-) → la web usa el número del episodio
   reel: ['reel_url', (v) => (v === '-' ? null : v)],
   metas: ['metas', (v) => v.split(',').map((x) => parseInt(x, 10))],
   anillo: ['cupo_anillo', (v) => parseInt(v, 10)],
   orbita: ['cupo_orbita', (v) => parseInt(v, 10)],
+  luna: ['cupo_luna', (v) => parseInt(v, 10)],
   turista: ['cupo_turista', (v) => parseInt(v, 10)],
   ascensos: ['ascensos_por_episodio', (v) => parseInt(v, 10)],
   investigadora: ['investigadora', (v) => v],
@@ -28,7 +30,7 @@ for (const a of process.argv.slice(2)) {
 const e = await leerEstado();
 const [{ r }] = await sql('select public.saturnoid_resumen() as r');
 console.log('Estado actual:', { ...e, actualizado_en: undefined });
-console.log(`Contadores reales: ${r.pasajeros} pasajeros (anillo ${r.anillo} + ${r.ascendidos} ascendidos, órbita ${r.orbita}, turista ${r.turista}), tripulación ${r.tripulacion}, de prueba ${r.prueba}`);
+console.log(`Contadores reales: ${r.pasajeros} pasajeros (anillo ${r.anillo} + ${r.ascendidos} ascendidos, órbita ${r.orbita}, luna ${r.luna ?? '— (falta admin/sql/clase-luna.sql)'}, turista ${r.turista}), tripulación ${r.tripulacion}, de prueba ${r.prueba}`);
 if (!Object.keys(cambios).length) process.exit(0);
 
 console.log('Cambios:', cambios);

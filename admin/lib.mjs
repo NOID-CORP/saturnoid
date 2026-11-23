@@ -51,14 +51,15 @@ export async function leerEstado() {
 export async function leerOcupacion() {
   const filas = await sql('select usuario, clase, asiento, numero, ascendido_en from public.saturnoid_pasajeros');
   const usados = new Set(filas.map((f) => f.usuario));
-  const max = { cabina: -1, anillo: -1, orbita: -1, turista: -1 };
-  const cuenta = { anillo: 0, orbita: 0, turista: 0, pasajeros: 0 };
+  const max = { cabina: -1, anillo: -1, orbita: -1, luna: -1, turista: -1 };
+  const cuenta = { anillo: 0, orbita: 0, luna: 0, turista: 0, pasajeros: 0 };
   let numero = 0;
   for (const f of filas) {
     const a = leerAsiento(f.asiento);
     if (a) max[a.clase] = Math.max(max[a.clase], a.i);
     if (f.clase === 'anillo' && f.ascendido_en == null) cuenta.anillo++;
     if (f.clase === 'orbita') cuenta.orbita++;
+    if (f.clase === 'luna') cuenta.luna++;
     if (f.clase === 'turista') cuenta.turista++;
     if (f.clase !== 'cabina') cuenta.pasajeros++;
     if (f.numero) numero = Math.max(numero, f.numero);
@@ -68,6 +69,10 @@ export async function leerOcupacion() {
 
 // Reparte asientos por orden de llegada respetando los cupos. No toca la base: devuelve el plan.
 export function planificar(nuevos, ocup, estado) {
+  if (estado.cupo_luna == null) {
+    console.error('La base todavía no tiene la Clase Luna: corre antes admin/sql/clase-luna.sql (ver LEEME.md).');
+    process.exit(1);
+  }
   const max = { ...ocup.max };
   const cuenta = { ...ocup.cuenta };
   let numero = ocup.numero;
@@ -76,6 +81,7 @@ export function planificar(nuevos, ocup, estado) {
     let clase = null;
     if (cuenta.anillo < estado.cupo_anillo) clase = 'anillo';
     else if (cuenta.orbita < estado.cupo_orbita) clase = 'orbita';
+    else if (cuenta.luna < estado.cupo_luna) clase = 'luna';
     else if (cuenta.turista < estado.cupo_turista) clase = 'turista';
     if (!clase) { fuera.push(n); continue; } // nave llena
     cuenta[clase]++;

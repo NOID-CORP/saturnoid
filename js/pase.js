@@ -4,7 +4,7 @@ import { CLASES } from './asientos.js';
 
 const W = 1080, H = 1920;
 const COL = { cafe: '#362011', osc: '#1e1209', noche: '#0b0a10', tinto: '#4D0C10', azul: '#C7D8EE', mant: '#FAECB2', texto: '#F4ECDD', oro: '#F2C14E', plata: '#D9DEE6' };
-const COLOR_CLASE = { cabina: COL.azul, anillo: COL.oro, orbita: COL.plata, turista: '#F2E6C8' };
+const COLOR_CLASE = { cabina: COL.azul, anillo: COL.oro, orbita: COL.plata, luna: '#CDBCFF', turista: '#F2E6C8' };
 const MESES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
 
 export function fechaCorta(iso) {

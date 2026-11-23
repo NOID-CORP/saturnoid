@@ -70,14 +70,14 @@ console.log(`\nSATURNOID · asignar asientos${esPrueba ? '  [DATOS DE PRUEBA]' :
 console.log(`Archivo: ${archivo} · episodio ${episodio}`);
 console.log(`Líneas: ${lineas.length} · nuevos: ${plan.length} · ya tenían asiento: ${yaTenian.length} · repetidos en el archivo: ${repetidos.length} · inválidos: ${invalidos.length}`);
 if (invalidos.length) console.log(`  Inválidos (se saltan): ${invalidos.slice(0, 10).join(', ')}${invalidos.length > 10 ? '…' : ''}`);
-for (const c of ['anillo', 'orbita', 'turista']) {
+for (const c of ['anillo', 'orbita', 'luna', 'turista']) {
   const l = por(c);
   if (!l.length) continue;
   console.log(`\n${CLASES[c].nombre}: ${l.length} nuevos`);
   const mostrar = l.length > 8 ? [...l.slice(0, 5), null, ...l.slice(-2)] : l;
   for (const p of mostrar) console.log(p ? `  #${String(p.numero).padStart(4)}  ${p.asiento.padEnd(7)} @${p.usuario}${p.ciudad ? ' · ' + p.ciudad : ''}` : '  …');
 }
-console.log(`\nDespués: ${cuenta.pasajeros} pasajeros · Anillo ${cuenta.anillo}/${estado.cupo_anillo} · Órbita ${cuenta.orbita}/${estado.cupo_orbita} · Turista ${cuenta.turista}/${estado.cupo_turista}`);
+console.log(`\nDespués: ${cuenta.pasajeros} pasajeros · Anillo ${cuenta.anillo}/${estado.cupo_anillo} · Órbita ${cuenta.orbita}/${estado.cupo_orbita} · Luna ${cuenta.luna}/${estado.cupo_luna} · Turista ${cuenta.turista}/${estado.cupo_turista}`);
 if (fuera.length) console.log(`\n¡NAVE LLENA! ${fuera.length} no caben y NO se suben: ${fuera.slice(0, 10).map((f) => '@' + f.usuario).join(', ')}${fuera.length > 10 ? '…' : ''}`);
 console.log(`Nave: ${resumenNivel(ocup.cuenta.pasajeros, estado.metas)} → ${resumenNivel(cuenta.pasajeros, estado.metas)}\n`);
 

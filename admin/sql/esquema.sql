@@ -1,10 +1,11 @@
 -- Saturnoid: tablas y permisos en Supabase (proyecto czycgwhcdexmfvvywzsv). Sin datos.
+-- Una base creada antes de la Clase Luna se pone al día con clase-luna.sql (no hace falta correr esto otra vez).
 -- La web solo LEE (clave pública + RLS de select). Escriben únicamente los scripts de admin/ con el token de administración.
 
 create table if not exists public.saturnoid_pasajeros (
   id             bigint generated always as identity primary key,
   usuario        text not null unique check (usuario ~ '^[a-z0-9._]{1,30}$'),
-  clase          text not null check (clase in ('cabina', 'anillo', 'orbita', 'turista')),
+  clase          text not null check (clase in ('cabina', 'anillo', 'orbita', 'luna', 'turista')),
   asiento        text not null unique,
   numero         int unique,                 -- pasajero nº (orden de llegada); null en la tripulación
   ciudad         text check (char_length(ciudad) <= 60),
@@ -20,11 +21,13 @@ create table if not exists public.saturnoid_pasajeros (
 create table if not exists public.saturnoid_estado (
   id                     int primary key default 1 check (id = 1),
   episodio_actual        int not null default 0,
+  dia_actual             int,                -- «DÍA N» del viaje; vacío = el número del episodio
   reel_url               text,               -- último reel; si está vacío, la web enlaza al perfil
   metas                  int[] not null default '{50,200,1000}', -- motor 1, motor 2, despegue (nave llena)
   cupo_anillo            int not null default 100,
   cupo_orbita            int not null default 300,
-  cupo_turista           int not null default 600,  -- 100 + 300 + 600 = 1000 pasajeros
+  cupo_luna              int not null default 200,
+  cupo_turista           int not null default 400,  -- 100 + 300 + 200 + 400 = 1000 pasajeros
   ascensos_por_episodio  int not null default 3,
   investigadora          text not null default 'Mery Orión',
   actualizado_en         timestamptz not null default now()
@@ -60,6 +63,7 @@ as $$
     'anillo',       (select count(*) from saturnoid_pasajeros where clase = 'anillo' and ascendido_en is null),
     'ascendidos',   (select count(*) from saturnoid_pasajeros where ascendido_en is not null),
     'orbita',       (select count(*) from saturnoid_pasajeros where clase = 'orbita'),
+    'luna',         (select count(*) from saturnoid_pasajeros where clase = 'luna'),
     'turista',      (select count(*) from saturnoid_pasajeros where clase = 'turista'),
     'prueba',       (select count(*) from saturnoid_pasajeros where es_prueba),
     'ultimos_ascensos', coalesce((

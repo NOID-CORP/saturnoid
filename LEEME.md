@@ -27,8 +27,10 @@ juanita.perez,Bucaramanga,2026-11-24 10:01
 - El usuario puede ir con o sin `@`, en mayúsculas o como enlace de perfil: el script lo limpia.
 - La ciudad es la que la persona escribió (puede ir vacía). La hora puede ser solo `10:03` si pasas `--fecha`.
 - Si alguien comentó dos veces, cuenta el primer comentario. Quien ya tenía asiento se salta solo.
+- Va **quien escribió el comentario**, no los @ que etiquetó: la persona etiquetada sube solo si comenta ella misma
+  (así lo dice el video: «quien etiquetes sube si también comenta»).
 
-**2. Asignar asientos** (por orden de llegada: Anillo hasta llenar su cupo, luego Órbita, luego Turista; si la nave se llena, el script avisa quiénes no caben y no los sube):
+**2. Asignar asientos** (por orden de llegada: Anillo hasta llenar su cupo, luego Órbita, luego Luna, luego Turista; si la nave se llena, el script avisa quiénes no caben y no los sube):
 
 ```
 node admin/asignar.mjs datos/ep2.csv --episodio 2
@@ -56,15 +58,19 @@ node admin/estado.mjs episodio=2 reel=https://www.instagram.com/reel/XXXXXXXX/
 |---|---|
 | Ver el estado y los contadores reales | `node admin/estado.mjs` |
 | Alguien pide salir (mensaje directo) | `node admin/ocultar.mjs usuario` (deshacer: `--mostrar`) |
-| Cambiar metas o cupos | `node admin/estado.mjs metas=50,200,1000 anillo=100 orbita=300 turista=600` |
+| Cambiar metas o cupos | `node admin/estado.mjs metas=50,200,1000 anillo=100 orbita=300 luna=200 turista=400` |
+| Poner el «DÍA» si no es el número del episodio | `node admin/estado.mjs dia=3` (`dia=-` vuelve a usar el episodio) |
 | Cambiar el nombre de la investigadora | `node admin/estado.mjs investigadora="Mery Orión"` |
 | Cambiar la tripulación de la cabina (9, con su permiso) | `node admin/tripulacion.mjs u1 u2 … u9` |
-| Datos de ejemplo para probar | `node admin/prueba.mjs crear 300` / `node admin/prueba.mjs borrar` |
+| Datos de ejemplo para probar | `node admin/prueba.mjs crear 700` (llega hasta Turista) / `node admin/prueba.mjs borrar` |
 
 **Antes de publicar el episodio 1: `node admin/prueba.mjs borrar`.** Mientras haya datos de prueba, la web lo dice
 arriba ("Datos de prueba · N de ejemplo").
 
-Las tablas se crearon con `admin/sql/esquema.sql` (sin datos). Columnas extra a las del encargo: `numero`
+Las tablas se crearon con `admin/sql/esquema.sql` (sin datos). **Clase Luna (23-nov):** una base creada antes se pone
+al día una sola vez con `admin/sql/clase-luna.sql` (Supabase → SQL Editor → pegar → Run): agrega `luna` a las clases,
+`cupo_luna` (200), `dia_actual`, deja Turista en 400 y el contador de Luna en `saturnoid_resumen`. Mientras no se corra,
+la web ya muestra las 4 clases (parte Turista en 200 + 400), pero `asignar.mjs` y `prueba.mjs` no escriben nada. Columnas extra a las del encargo: `numero`
 (pasajero nº, orden de llegada), `es_prueba` y `ascendido_en` (episodio en que subió de Turista a Anillo).
 
 ## Asientos
@@ -72,9 +78,10 @@ Las tablas se crearon con `admin/sql/esquema.sql` (sin datos). Columnas extra a 
 | Clase | Código | Cómo se reparte |
 |---|---|---|
 | Cabina de mando | `C-01` (Mery Orión, personaje) y `C-02`…`C-10` (tripulación) | Fija |
-| Clase Anillo | `A-01`… (los ascensos toman la siguiente suite y no cuentan en el cupo) | Los primeros 100 |
-| Clase Órbita | `O-01A`…`O-75D` (filas de 4) | Los siguientes 300 |
-| Turista | `T-001A`…`T-100F` (filas de 6) | Los siguientes 600 |
+| Clase Anillo | `A-01`… (los ascensos toman la siguiente suite y no cuentan en el cupo) | Los primeros 100 (comentarios nº 1–100) |
+| Clase Órbita | `O-01A`…`O-75D` (filas de 4) | Los siguientes 300 (comentarios nº 101–400) |
+| Clase Luna | `L-01A`…`L-40E` (filas de 5: 2 junto a la ventana, pasillo y 3) | Los siguientes 200 (nº 401–600) |
+| Turista | `T-001A`…`T-067D` (filas de 6) | Los últimos 400 (nº 601–1.000) |
 
 En total, 1.000 pasajeros (más la tripulación). Motor 1 enciende con 50, motor 2 con 200 y el despegue es con 1.000: la nave llena.
 
@@ -106,7 +113,7 @@ Además, las sombras de la escena solo se recalculan cuando la nave se mueve (co
 ```
 npm run local                 # http://127.0.0.1:8080 (después de npm run construir)
 cd pruebas && npm install     # una vez (playwright-core, usa el Chrome instalado)
-node pruebas/probar.mjs       # celular 390×844: portada, las 4 clases, pase, usuario sin asiento → pruebas/capturas/
+node pruebas/probar.mjs       # celular 390×844: portada, clases, pase de Anillo/Órbita/Luna/Turista, usuario sin asiento → pruebas/capturas/
 node pruebas/probar.mjs --escritorio prueba_0007
 node pruebas/probar.mjs --sin3d prueba_0120     # plan B sin WebGL
 node pruebas/carga.mjs        # tiempos con 4G simulado
@@ -126,7 +133,7 @@ video puede pedir el cuadro exacto `t`. Three.js 0.181.2 va dentro de `lib/three
 |---|---|
 | `mundo.js` | Arma todo: `crearMundo({ canvas, calidad })` → `mundo.cuadro(t, { nivel, cam, adentro })`, `prepararAsiento(clase, …)`, `capturar(cam)` |
 | `cielo.js` | Estrellas y el planeta Saturnoid (océanos, bosques, nubes, atmósfera, anillo en colores NOID) |
-| `nave.js` | La nave por secciones (Turista, Órbita, Anillo con cúpulas, Cabina), motores por nivel, vapor |
+| `nave.js` | La nave por secciones (Turista, Luna, Órbita, Anillo con cúpulas, Cabina), motores por nivel, vapor |
 | `plataforma.js` | Suelo, plataforma, torre, reflectores y montañas |
 | `interiores.js` | El interior de cada clase alrededor de un asiento, con los vecinos reales |
 | `nametags.js` | Nametags estilo Minecraft y los pasajeros (casco con visor, sin caras) |

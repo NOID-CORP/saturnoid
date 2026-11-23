@@ -1,5 +1,5 @@
 // Nametags estilo Minecraft: rectángulo oscuro semitransparente, texto claro, siempre mirando a la cámara.
-// Color del texto por clase: dorado (Anillo), plateado (Órbita), azul (cabina), blanco (Turista).
+// Color del texto por clase: dorado (Anillo), plateado (Órbita), lavanda (Luna), azul (cabina), blanco (Turista).
 // También los pasajeros: figura sentada con casco y visor (sin caras: en los videos las caras fallaban).
 import * as THREE from 'three';
 import { lienzo, C } from './util.js';
@@ -7,6 +7,7 @@ import { lienzo, C } from './util.js';
 const ESTILOS = {
   oro: { texto: '#F6C453', borde: 'rgba(246,196,83,.55)' },
   plata: { texto: '#E3E8EF', borde: 'rgba(227,232,239,.45)' },
+  lavanda: { texto: '#CDBCFF', borde: 'rgba(205,188,255,.5)' },
   cabina: { texto: C.azul, borde: 'rgba(199,216,238,.45)' },
   turista: { texto: '#FFFFFF', borde: null },
   investigadora: { texto: C.mant, borde: 'rgba(250,236,178,.6)' },

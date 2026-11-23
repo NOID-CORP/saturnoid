@@ -1,6 +1,6 @@
 // Página de Saturnoid: contadores en vivo, buscador, vuelo al asiento, pase de abordar y plan B sin 3D.
 import { resumen, buscarPasajero, tripulacion, ocupantesCerca } from './datos.js';
-import { CLASES, NIVELES, nivelDe, normalizarUsuario, USUARIO_VALIDO, vecinos, leerAsiento, codigoAsiento } from './asientos.js';
+import { CLASES, ORDEN_CLASES, NIVELES, nivelDe, normalizarUsuario, USUARIO_VALIDO, vecinos, leerAsiento, codigoAsiento } from './asientos.js';
 import { crearPase, aBlob, fechaCorta } from './pase.js';
 import { PERFIL_IG } from './config.js';
 
@@ -56,16 +56,25 @@ function pintarResumen() {
     li.classList.toggle('hecho', p >= metas[i]);
     li.querySelector('span').innerHTML = `${['Motor 1', 'Motor 2', 'Despegue'][i]}<b>${num(metas[i])}</b>`;
   });
-  $('#ep').textContent = `· EP. ${Math.max(1, e.episodio_actual)}`;
+  const ep = Math.max(1, e.episodio_actual);
+  $('#ep').textContent = `EP. ${ep} · DÍA ${Math.max(1, e.dia_actual ?? ep)}`;
+  $('#tripulantes').textContent = `Tripulación ${num(R.tripulacion)}/9${R.tripulacion >= 9 ? ' ✓' : ''}`; // ≠ pasajeros
   const reel = e.reel_url || PERFIL_IG;
   for (const a of [$('#reel'), $('#sa-reel')]) a.href = reel;
   $('#reel').textContent = e.reel_url ? 'Ver el último episodio ↗' : 'Ver la serie en Instagram ↗';
 
-  const quedan = { anillo: Math.max(0, e.cupo_anillo - R.anillo), orbita: Math.max(0, e.cupo_orbita - R.orbita), turista: Math.max(0, e.cupo_turista - R.turista) };
-  const cupo = (clase, txt, llena) => { const el = document.querySelector(`.cupo[data-clase="${clase}"]`); el.textContent = txt; el.classList.toggle('llena', !!llena); };
-  cupo('anillo', quedan.anillo ? `Quedan ${quedan.anillo} de ${e.cupo_anillo}` : 'Llena', !quedan.anillo);
-  cupo('orbita', quedan.orbita ? `Quedan ${quedan.orbita} de ${e.cupo_orbita}` : 'Llena', !quedan.orbita);
-  cupo('turista', quedan.turista ? `Quedan ${num(quedan.turista)} de ${num(e.cupo_turista)}` : 'Llena', !quedan.turista);
+  const cupos = cuposDe(e);
+  const quedan = {};
+  let desde = 1;
+  for (const c of CLASES_PASAJEROS) {
+    quedan[c] = Math.max(0, cupos[c] - (R[c] || 0));
+    const el = document.querySelector(`.cupo[data-clase="${c}"]`);
+    el.textContent = quedan[c] ? `Quedan ${num(quedan[c])} de ${num(cupos[c])}` : 'Llena';
+    el.classList.toggle('llena', !quedan[c]);
+    // "Comentarios nº 1 al 100": la clase va por el orden del comentario (como lo dice el video)
+    document.querySelector(`.orden[data-clase="${c}"]`).textContent = `Comentarios nº ${num(desde)} al ${num(desde + cupos[c] - 1)}`;
+    desde += cupos[c];
+  }
   $('#cupos-rapido').innerHTML = textoCupos(quedan);
   $('#sa-cupos').innerHTML = textoCupos(quedan);
 
@@ -80,10 +89,21 @@ function pintarResumen() {
   }
 }
 
+// Las clases de pasajeros en el orden en que se llenan (la cabina es fija).
+const CLASES_PASAJEROS = ORDEN_CLASES.filter((c) => c !== 'cabina');
+
+// Cupos de la base. Mientras la base no tenga cupo_luna (antes de correr admin/sql/clase-luna.sql),
+// Turista se parte como lo dice el video: 200 para Clase Luna y el resto para Turista.
+function cuposDe(e) {
+  const luna = e.cupo_luna ?? 200;
+  return { anillo: e.cupo_anillo, orbita: e.cupo_orbita, luna, turista: e.cupo_luna == null ? e.cupo_turista - luna : e.cupo_turista };
+}
+
 function textoCupos(q) {
   if (q.anillo) return `Quedan <b>${q.anillo}</b> asientos en Clase Anillo${q.orbita ? ` y ${q.orbita} en Órbita` : ''}.`;
   if (q.orbita) return `Clase Anillo está llena. Quedan <b>${q.orbita}</b> en Órbita.`;
-  if (q.turista) return `Anillo y Órbita están llenas. Quedan <b>${num(q.turista)}</b> en Turista (y cada episodio 3 suben a Anillo).`;
+  if (q.luna) return `Anillo y Órbita están llenas. Quedan <b>${q.luna}</b> en Clase Luna.`;
+  if (q.turista) return `Anillo, Órbita y Luna están llenas. Quedan <b>${num(q.turista)}</b> en Turista (y cada episodio 3 suben a Anillo).`;
   return 'La nave está llena: 1.000 pasajeros a bordo.';
 }
 
@@ -323,7 +343,7 @@ function pintarTarjeta(p, ocupantes) {
 
 function mapa2D(p, ocupantes) {
   const a = leerAsiento(p.asiento); const c = CLASES[p.clase];
-  const color = { cabina: '#C7D8EE', anillo: '#F2C14E', orbita: '#D9DEE6', turista: '#F2E6C8' }[p.clase];
+  const color = { cabina: '#C7D8EE', anillo: '#F2C14E', orbita: '#D9DEE6', luna: '#CDBCFF', turista: '#F2E6C8' }[p.clase];
   if (p.clase === 'cabina' || p.clase === 'anillo') {
     const cods = p.clase === 'cabina' ? Array.from({ length: 10 }, (_, i) => codigoAsiento('cabina', i)) : [-2, -1, 0, 1, 2].map((d) => a.i + d).filter((i) => i >= 0).map((i) => codigoAsiento('anillo', i));
     const w = 300 / cods.length;
@@ -334,7 +354,7 @@ function mapa2D(p, ocupantes) {
   }
   const filasV = [-1, 0, 1].map((d) => a.fila + d).filter((f) => f >= 1);
   const ancho = 300, celda = ancho / (c.porFila + 1);
-  const pasillo = c.porFila / 2;
+  const pasillo = Math.floor(c.porFila / 2); // Luna: 2 junto a la ventana, pasillo y 3
   return `<svg viewBox="0 0 300 ${filasV.length * 40 + 10}" role="img" aria-label="Asientos cercanos">${filasV.map((f, fi) =>
     Array.from({ length: c.porFila }, (_, col) => {
       const cod = codigoAsiento(p.clase, (f - 1) * c.porFila + col); const yo = cod === p.asiento; const ocupado = yo || ocupantes.has(cod);

@@ -21,7 +21,7 @@ if (accion === 'crear') {
     nuevos.push({ usuario, ciudad: CIUDADES[(i * 7) % CIUDADES.length], hora: new Date(base + i * 41_000).toISOString() });
   }
   const { plan, cuenta } = planificar(nuevos, ocup, estado);
-  console.log(`Crear ${plan.length} pasajeros de prueba → anillo ${cuenta.anillo}, órbita ${cuenta.orbita}, turista ${cuenta.turista}`);
+  console.log(`Crear ${plan.length} pasajeros de prueba → anillo ${cuenta.anillo}, órbita ${cuenta.orbita}, luna ${cuenta.luna}, turista ${cuenta.turista}`);
   if (!(await preguntar('¿Crear? (s/n) '))) process.exit(0);
   for (let i = 0; i < plan.length; i += 400) await sql(insertarSQL(plan.slice(i, i + 400), estado.episodio_actual || 1, true));
   console.log('Listo.');
