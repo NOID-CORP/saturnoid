@@ -67,7 +67,8 @@ export function crearCielo({ calidad = 'media' } = {}) {
   }));
   escena.add(estrellas);
 
-  // Planeta: tipo Tierra (océano, costas, bosques, tierras café, nieve en los polos), luz del sol con terminador suave.
+  // Planeta: habitable pero NO la Tierra (23-nov, DON: «que se vea la diferencia»): océanos turquesa, bosques color vino,
+  // llanuras doradas, hielo lavanda en los polos y atmósfera cálida; luz del sol con terminador suave.
   const planeta = new THREE.Group();
   planeta.position.copy(centro);
   planeta.rotation.set(0.35, 0.8, -0.22);
@@ -87,24 +88,24 @@ export function crearCielo({ calidad = 'media' } = {}) {
         float lat = abs(vN.y);
         float tierra = smoothstep(0.515, 0.53, h);
         float costa = smoothstep(0.47, 0.515, h) * (1.0 - tierra);
-        vec3 hondo = vec3(0.02,0.08,0.20), medio = vec3(0.05,0.21,0.40), bajo = vec3(0.16,0.45,0.58);
+        vec3 hondo = vec3(0.01,0.09,0.12), medio = vec3(0.02,0.27,0.32), bajo = vec3(0.16,0.60,0.58);
         vec3 agua = mix(hondo, medio, smoothstep(0.30,0.47,h));
         agua = mix(agua, bajo, costa);
         float seco = smoothstep(0.45, 0.65, fbm(vN*3.3+11.0)) * (1.0 - smoothstep(0.55,0.8,lat));
-        vec3 bosque = mix(vec3(0.07,0.20,0.08), vec3(0.16,0.31,0.12), fbm(vN*9.0));
-        vec3 cafe = mix(vec3(0.33,0.22,0.12), vec3(0.55,0.42,0.26), fbm(vN*7.0+3.0));
+        vec3 bosque = mix(vec3(0.16,0.06,0.13), vec3(0.32,0.12,0.24), fbm(vN*9.0));
+        vec3 cafe = mix(vec3(0.55,0.42,0.22), vec3(0.78,0.66,0.40), fbm(vN*7.0+3.0));
         vec3 suelo = mix(bosque, cafe, seco);
-        suelo = mix(suelo, vec3(0.42,0.36,0.30), smoothstep(0.62,0.72,h));
+        suelo = mix(suelo, vec3(0.48,0.36,0.34), smoothstep(0.62,0.72,h));
         vec3 col = mix(agua, suelo, tierra);
         float nieve = smoothstep(0.80, 0.88, lat + 0.08*fbm(vN*6.0));
-        col = mix(col, vec3(0.92,0.94,0.97), nieve);
+        col = mix(col, vec3(0.86,0.85,0.98), nieve);
         float luz = dot(normalize(vNW), uSol);
         float dia = smoothstep(-0.12, 0.35, luz);
         vec3 r = reflect(-uSol, normalize(vNW));
         float brillo = pow(max(dot(r, vV), 0.0), 40.0) * (1.0 - tierra) * dia * 0.8;
         vec3 c = col * (0.035 + 1.15*dia) + vec3(1.0,0.92,0.78)*brillo;
         float borde = pow(1.0 - max(dot(normalize(vNW), vV), 0.0), 2.5);
-        c += vec3(0.42,0.62,0.95) * borde * (0.15 + 0.85*dia) * 0.9;
+        c += vec3(0.98,0.66,0.52) * borde * (0.15 + 0.85*dia) * 0.9;
         gl_FragColor = vec4(c, 1.0);
       }`,
   }));
@@ -126,12 +127,12 @@ export function crearCielo({ calidad = 'media' } = {}) {
         float n = fbm(p*3.2 + vec3(0.0, 0.0, uT*0.003));
         float d = smoothstep(0.50, 0.75, n) * 0.85;
         float luz = smoothstep(-0.1, 0.4, dot(normalize(vNW), uSol));
-        gl_FragColor = vec4(vec3(1.0,0.98,0.95)*(0.05+0.95*luz), d*(0.25+0.75*luz));
+        gl_FragColor = vec4(vec3(1.0,0.95,0.86)*(0.05+0.95*luz), d*(0.25+0.75*luz));
       }`,
   }));
   planeta.add(nubes);
 
-  // Atmósfera: halo azul por fuera.
+  // Atmósfera: halo cálido (durazno) por fuera.
   const atm = new THREE.Mesh(new THREE.SphereGeometry(RADIO * 1.08, 64, 32), new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending,
     uniforms: { uSol: { value: DIR_SOL } },
@@ -142,7 +143,7 @@ export function crearCielo({ calidad = 'media' } = {}) {
       void main(){ float f = -dot(normalize(vNW), vV);
         float halo = pow(smoothstep(0.0, 0.38, f), 2.2);
         float luz = smoothstep(-0.35, 0.45, dot(normalize(vNW), uSol));
-        gl_FragColor = vec4(vec3(0.45,0.65,1.0)*halo*(0.12+0.9*luz), 1.0); }`,
+        gl_FragColor = vec4(vec3(1.0,0.62,0.45)*halo*(0.12+0.9*luz), 1.0); }`,
   }));
   planeta.add(atm);
 
