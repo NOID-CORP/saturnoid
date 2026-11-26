@@ -146,11 +146,27 @@ function libro() {
   return g;
 }
 
+// Comida = una hamburguesa gigante.
 function comida() {
   const g = new THREE.Group(); g.position.set(0.3, 0.2, 0);
-  g.add(malla(new THREE.CylinderGeometry(0.045, 0.04, 0.1, 16), mat('#f2ede4', 0.4), [0, 0.05, 0]));
-  g.add(malla(new THREE.CylinderGeometry(0.04, 0.04, 0.004, 16), mat('#4a2a17', 0.2), [0, 0.096, 0]));
-  g.add(malla(new THREE.TorusGeometry(0.025, 0.008, 6, 12, Math.PI), mat('#f2ede4', 0.4), [0, 0.05, 0.045], [0, 0, -Math.PI / 2]));
+  const pan = mat('#d9953f', 0.6);
+  g.add(malla(new THREE.CylinderGeometry(0.085, 0.08, 0.03, 20), pan, [0, 0.015, 0]));
+  g.add(malla(new THREE.CylinderGeometry(0.09, 0.09, 0.03, 20), mat('#5a2e1a', 0.8), [0, 0.045, 0]));
+  g.add(malla(new THREE.CylinderGeometry(0.095, 0.095, 0.008, 6), mat('#f6c23a', 0.5), [0, 0.063, 0], [0, 0.3, 0]));
+  g.add(malla(new THREE.CylinderGeometry(0.097, 0.092, 0.012, 20), mat('#58a83c', 0.7), [0, 0.072, 0]));
+  g.add(malla(new THREE.CylinderGeometry(0.08, 0.08, 0.012, 20), mat('#d23a2c', 0.6), [0, 0.084, 0]));
+  const tapa = malla(new THREE.SphereGeometry(0.088, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), pan, [0, 0.09, 0], [0, 0, 0], [1, 0.6, 1]); g.add(tapa);
+  for (let k = 0; k < 7; k++) { const a = k * 2.4; g.add(malla(esfera(0.006, 6, 4), mat('#f8ecc8', 0.6), [Math.cos(a) * 0.05, 0.135 + (k % 2) * 0.006, Math.sin(a) * 0.05], [0, 0, 0], [1.6, 0.6, 1])); }
+  return g;
+}
+
+// Lata de energizante (para no dormirse en el viaje).
+function lata() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.3, 0.06); g.rotation.z = -0.2;
+  g.add(malla(new THREE.CylinderGeometry(0.035, 0.035, 0.15, 20), mat('#2a4fa8', 0.35, 0.6)));
+  g.add(malla(new THREE.CylinderGeometry(0.0355, 0.0355, 0.05, 20), mat('#c8ccd4', 0.3, 0.9)));
+  g.add(malla(new THREE.CylinderGeometry(0.03, 0.035, 0.012, 20), mat('#c8ccd4', 0.3, 0.9), [0, 0.081, 0]));
+  g.add(malla(esfera(0.02, 10, 8), mat('#e8333a', 0.5), [0.033, 0, 0], [0, 0, 0], [0.3, 1, 1]));
   return g;
 }
 
@@ -162,13 +178,13 @@ function planta() {
   return g;
 }
 
-function musica() {
+function musica(bajo = false) {
   const g = new THREE.Group(); g.position.set(0.28, 0.25, 0); g.rotation.set(0.9, 0, 0.3);
-  const madera = mat('#c2803f', 0.5);
+  const madera = mat(bajo ? '#b3202a' : '#c2803f', bajo ? 0.25 : 0.5, bajo ? 0.2 : 0);
   g.add(malla(esfera(0.09, 16, 10), madera, [0, -0.06, 0], [0, 0, 0], [1, 1, 0.35]));
   g.add(malla(esfera(0.07, 16, 10), madera, [0, 0.05, 0], [0, 0, 0], [1, 1, 0.35]));
   g.add(malla(new THREE.CircleGeometry(0.028, 16), mat('#1b120c', 0.8), [0, 0.0, 0.026]));
-  g.add(malla(caja(0.03, 0.26, 0.015), mat('#3a2616', 0.6), [0, 0.22, 0]));
+  g.add(malla(caja(0.03, bajo ? 0.36 : 0.26, 0.015), mat('#3a2616', 0.6), [0, bajo ? 0.27 : 0.22, 0]));
   return g;
 }
 
@@ -263,7 +279,7 @@ function piano() {
 const FABRICAS = {
   fuego, gato: () => animal(false), perro: () => animal(true), celular, audifonos, computador, carro, cama, corazon,
   libro, comida, planta, musica, balon: () => balon(), bucaros: () => balon('#f7d117', '#127a3a'), maleta,
-  mundo, herramientas, microfono, piano,
+  mundo, herramientas, microfono, piano, lata, bajo: () => musica(true),
 };
 
 // Dónde va la llama cuando el objeto está prendido («computador+fuego», «balon+fuego»): encima del objeto.

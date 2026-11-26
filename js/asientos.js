@@ -80,8 +80,9 @@ export function nivelDe(pasajeros, metas) {
 // Lo que cada pasajero lleva en las manos en el 3D (escena/objetos.js). La clave va en la columna `objeto`.
 export const OBJETOS = {
   fuego: 'Fuego', gato: 'Gato', perro: 'Perro', celular: 'Celular', audifonos: 'Audífonos', computador: 'Computador',
-  carro: 'Carro', cama: 'Cama', corazon: 'Corazón (lleva a alguien)', libro: 'Libro', comida: 'Comida', planta: 'Planta',
+  carro: 'Carro', cama: 'Cama', corazon: 'Corazón (lleva a alguien)', libro: 'Libro', comida: 'Comida (hamburguesa)', planta: 'Planta',
   musica: 'Guitarra', balon: 'Balón', bucaros: 'Balón del Atlético Bucaramanga', maleta: 'Maleta',
+  lata: 'Lata de energizante', bajo: 'Bajo eléctrico',
   mundo: 'El mundo entero', herramientas: 'Caja de herramientas', microfono: 'Micrófono dorado (cantantes)', piano: 'Piano de cola',
 };
 // Dos claves con + (p. ej. «balon+fuego»): el objeto en llamas. La segunda solo puede ser fuego.
@@ -101,6 +102,8 @@ export function adivinarObjeto(texto = '') {
     ['carro', /carro|auto\b|moto\b|🚗|🏍/u],
     ['cama', /cama|almohada|cobija|🛏/u],
     ['piano', /piano|🎹/u],
+    ['bajo', /\bbajo\b/u],
+    ['lata', /red ?bull|monster|energizante|gaseosa|coca|cerveza|🥤|🍺/u],
     ['herramientas', /herramienta|martillo|taladro|🔧|🛠/u],
     ['mundo', /mundo|la tierra|planeta|🌍|🌎|🌏/u],
     ['microfono', /microfono|cantar|maluma|karol|feid|shakira|🎤/u],
