@@ -1,5 +1,5 @@
 // Página de Saturnoid: contadores en vivo, buscador, vuelo al asiento, pase de abordar y plan B sin 3D.
-import { resumen, buscarPasajero, tripulacion, ocupantesCerca } from './datos.js';
+import { resumen, buscarPasajero, tripulacion, ocupantesCerca, asientosOcupados } from './datos.js';
 import { CLASES, ORDEN_CLASES, NIVELES, nivelDe, normalizarUsuario, USUARIO_VALIDO, vecinos, leerAsiento, codigoAsiento } from './asientos.js';
 import { crearPase, aBlob, fechaCorta } from './pase.js';
 import { PERFIL_IG } from './config.js';
@@ -19,6 +19,8 @@ let vuelo = null, tVuelo0 = 0, tLlegada = 0;
 let nivelVis = 0, nivelObj = 0;
 let actual = null;      // pasajero en pantalla
 let mirada = null;      // dedo + celular + flechas desde el asiento (js/mirada.js)
+let tercera = 0, terceraObj = 0; // 0 = desde tus ojos, 1 = verte sentado (la cámara pasa de una a otra suave)
+const reducirMov = matchMedia('(prefers-reduced-motion: reduce)');
 const DUR_VUELO = 5.6;
 
 // ---------- datos ----------
@@ -159,7 +161,8 @@ const desp = { x: 0, y: 0 };
 function despObjetivo() {
   const ancho = innerWidth >= 900;
   if (modo === 'portada') return ancho ? { x: -0.34, y: -0.05 } : { x: 0, y: -0.42 };
-  return ancho ? { x: -0.28, y: 0 } : { x: 0, y: -0.18 };
+  // con la tarjeta minimizada la escena baja: queda más a la vista
+  return ancho ? { x: tarjetaMin ? -0.1 : -0.28, y: 0 } : { x: 0, y: tarjetaMin ? -0.05 : -0.18 };
 }
 function ajustar() {
   if (!mundo) return;
@@ -193,6 +196,14 @@ function bucle(ahora) {
     // la mirada (recorrido automático hasta que la persona tome el control, luego dedo + celular), suavizada
     const v = mirada.actualizar(dt, mirada.tomada ? undefined : modulos.recorridoPOV(tl, pov));
     cam = modulos.camaraPOV(tl, pov, { yaw: v.yaw, pitch: v.pitch, activo: true });
+    // verse sentado: la cámara sale de la cabeza y gira alrededor (mismo dedo, mismo celular)
+    tercera = reducirMov.matches ? terceraObj : tercera + (terceraObj - tercera) * (1 - Math.exp(-Math.min(dt, 0.1) / 0.2));
+    if (Math.abs(terceraObj - tercera) < 0.002) tercera = terceraObj;
+    if (tercera > 0) {
+      const c3 = modulos.camaraTercera(tl, pov, v, pov.distTercera), k = tercera * tercera * (3 - 2 * tercera);
+      cam.pos.lerp(c3.pos, k); cam.mira.lerp(c3.mira, k);
+    }
+    mundo.interior.verme?.(tercera);
     window.__mirada ??= () => ({ yaw: v.yaw, pitch: v.pitch }); // solo para pruebas/mirada.mjs
     cam.fov = aspecto < 0.85 ? 78 : 64;
     sacudida = mundo.interior.sacudida || 0;
@@ -232,6 +243,7 @@ function prepararMirada(lienzo) {
 
 const tactil = matchMedia('(pointer: coarse)').matches;
 function textoPista() {
+  if (terceraObj) return tactil ? 'Arrastra para girar a tu alrededor' : 'Arrastra o usa las flechas para girar';
   if (mirada?.sensor.activo) return 'Mueve el celular o arrastra para mirar';
   return tactil ? 'Arrastra para mirar alrededor' : 'Arrastra o usa las flechas para mirar';
 }
@@ -253,7 +265,13 @@ function pistaTrasMirar(como) {
 const consultas = new Map();
 function consultar(usuario) {
   if (!consultas.has(usuario)) {
-    const pr = buscarPasajero(usuario).then(async (p) => ({ p, ocupantes: p ? await ocupantesCerca(p.asiento).catch(() => new Map()) : null }));
+    // el asiento, los vecinos (con nombre) y qué asientos de la clase están ocupados (para el piso completo), a la vez
+    const pr = buscarPasajero(usuario).then(async (p) => {
+      if (!p) return { p, ocupantes: null, ocupados: null };
+      const [ocupantes, ocupados] = await Promise.all([ocupantesCerca(p.asiento).catch(() => new Map()),
+        p.clase === 'cabina' ? null : asientosOcupados(p.clase).catch(() => null)]);
+      return { p, ocupantes, ocupados };
+    });
     pr.catch(() => consultas.delete(usuario));
     consultas.set(usuario, pr);
     setTimeout(() => consultas.delete(usuario), 60000); // no guardar respuestas viejas
@@ -283,11 +301,11 @@ async function buscar(texto) {
   $('#usuario').blur();
   aviso(`Buscando @${usuario}…`);
   try {
-    const { p, ocupantes } = await consultar(usuario);
+    const { p, ocupantes, ocupados } = await consultar(usuario);
     if (!p) { quitarAviso(); return sinAsiento(usuario); }
     history.replaceState(null, '', `?u=${encodeURIComponent(usuario)}`);
     aviso(`Asiento ${p.asiento} · ${CLASES[p.clase].nombre}`, mundo ? 'Despegando hacia tu asiento' : '', true);
-    abordar(p, ocupantes);
+    abordar(p, ocupantes, ocupados);
     quitarAviso(mundo ? 1800 : 600);
   } catch {
     quitarAviso();
@@ -301,7 +319,7 @@ function sinAsiento(usuario) {
   $('#sa-reel').focus();
 }
 
-function abordar(p, ocupantes) {
+function abordar(p, ocupantes, ocupados) {
   actual = p;
   pintarTarjeta(p, ocupantes);
   $('#usuario').blur();
@@ -310,10 +328,13 @@ function abordar(p, ocupantes) {
     pasajeros: R?.pasajeros ?? 0, investigadora: R?.estado?.investigadora, nivel: nivelObj,
     nivelNombre: NIVELES[nivelObj].nombre, lineaMeta: R ? lineaMeta(R.pasajeros, R.estado.metas) : '',
   };
-  const interior = mundo.prepararAsiento(p.clase, { asiento: p.asiento, usuario: p.usuario, ocupantes, info });
+  // sin la lista de ocupados (falló la consulta), solo se ven los vecinos conocidos
+  const interior = mundo.prepararAsiento(p.clase, { asiento: p.asiento, usuario: p.usuario, ocupantes, info,
+    ocupados: ocupados || new Set([...ocupantes.keys(), p.asiento]) });
   const desde = { pos: mundo.camara.position.clone(), mira: mundo.camara.position.clone().add(mundo.camara.getWorldDirection(mundo.camara.position.clone()).multiplyScalar(40)) };
   vuelo = modulos.armarVuelo(desde, interior);
   mirada.reiniciar(modulos.limitesPOV(interior.pov));
+  ponerVerme(false, true);
   scrollTo({ top: 0, behavior: 'instant' });
   modo = 'volando'; tVuelo0 = performance.now();
   document.body.classList.add('volando');
@@ -332,11 +353,13 @@ function mostrarAsiento() {
   clearTimeout(pistaReloj);
   const p = $('#a-pista'); p.hidden = !mundo; p.classList.remove('se-va');
   if (mundo) p.textContent = textoPista();
+  $('#a-verme').hidden = !mundo;
 }
 
 function pintarTarjeta(p, ocupantes) {
   const c = CLASES[p.clase];
   $('#a-clase').textContent = p.es_tripulacion ? 'Cabina de mando · Tripulación fundadora' : c.nombre;
+  $('#a-clase').dataset.asiento = p.asiento;
   $('#a-usuario').textContent = `@${p.usuario}`;
   $('#a-asiento').textContent = p.asiento;
   $('#a-num-etq').textContent = p.es_tripulacion ? 'Tripulante' : 'Pasajero';
@@ -392,6 +415,28 @@ function volver() {
   }, 450);
 }
 
+// ---------- tarjeta del asiento: minimizar y verse sentado ----------
+let tarjetaMin = false;
+function minimizarTarjeta(min) {
+  tarjetaMin = min;
+  const t = $('#a-tarjeta'), b = $('#a-minimizar');
+  t.classList.toggle('min', min);
+  b.setAttribute('aria-expanded', String(!min));
+  b.setAttribute('aria-label', min ? 'Mostrar la tarjeta' : 'Minimizar la tarjeta');
+  $('#a-detalle').inert = min; // lo oculto no se alcanza con el teclado
+  try { localStorage.setItem('saturnoid-tarjeta-min', min ? '1' : ''); } catch { /* sin almacenamiento */ }
+}
+$('#a-minimizar').addEventListener('click', () => minimizarTarjeta(!tarjetaMin));
+try { if (localStorage.getItem('saturnoid-tarjeta-min')) minimizarTarjeta(true); } catch { /* sin almacenamiento */ }
+
+function ponerVerme(on, alInstante = false) {
+  terceraObj = on ? 1 : 0;
+  if (alInstante) tercera = terceraObj;
+  $('#a-verme').setAttribute('aria-pressed', String(on));
+  if (modo === 'asiento' && mundo) mostrarPista(textoPista(), 3500);
+}
+$('#a-verme').addEventListener('click', () => ponerVerme(!terceraObj));
+
 // ---------- pase ----------
 let urlPase = null;
 async function verPase() {
@@ -401,7 +446,9 @@ async function verPase() {
     if (mundo && modo === 'asiento') {
       // la vista principal del asiento (no la que quedó al arrastrar)
       const vista = modulos.camaraPOV(0, mundo.interior.pov, { yaw: 0, pitch: 0, activo: true });
+      mundo.interior.verme?.(0); // la foto es desde tus ojos: sin tu propio casco delante
       foto = mundo.capturar(vista);
+      mundo.interior.verme?.(tercera);
     }
     const cv = await crearPase(actual, { foto });
     const blob = await aBlob(cv);

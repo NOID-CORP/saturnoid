@@ -151,6 +151,27 @@ body.en-asiento, body.volando { overflow: hidden; }
 @keyframes subir { from { transform: translateY(24px); opacity: 0; } }
 .clase-chip { margin: 0 0 4px; font: 500 11px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; }
 .panel-asiento h2 { margin: 0 0 10px; font: 800 clamp(20px, 6.4vw, 30px)/1.1 var(--ancha); word-break: break-word; }
+/* Cabeza de la tarjeta: quién y el botón de minimizar. Minimizada, queda una sola línea (clase · asiento y usuario). */
+.cabeza-tarjeta { display: flex; align-items: flex-start; gap: 8px; }
+.cabeza-tarjeta .quien { flex: 1; min-width: 0; }
+.minimizar { flex: none; width: 44px; height: 44px; margin: -10px -10px -6px 0; display: grid; place-items: center; border: 0; border-radius: 12px; background: transparent; color: var(--suave); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.minimizar svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .35s cubic-bezier(.2,.8,.2,1); }
+.minimizar:hover, .minimizar:focus-visible { color: var(--texto); background: rgba(244,236,221,.07); }
+.detalle { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .4s cubic-bezier(.2,.8,.2,1), opacity .3s ease; }
+.detalle-in { min-height: 0; overflow: hidden; }
+.tarjeta.min { padding-top: 12px; padding-bottom: 12px; }
+.tarjeta.min .detalle { grid-template-rows: 0fr; opacity: 0; }
+.tarjeta.min .minimizar svg { transform: rotate(180deg); }
+.tarjeta.min h2 { margin: 0; font-size: clamp(17px, 4.8vw, 22px); }
+.tarjeta.min .clase-chip::after { content: " · " attr(data-asiento); }
+/* Verme sentado: encima de la tarjeta, a la derecha (a la mano del pulgar), abierta o minimizada */
+.verme { position: absolute; right: 0; bottom: calc(100% + 10px); display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 9px 14px; border: 1px solid var(--linea); border-radius: 999px;
+  background: rgba(11,10,16,.6); color: var(--texto); font: 500 12px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; cursor: pointer;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.verme i { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--suave); transition: background .2s, border-color .2s, box-shadow .2s; }
+.verme[aria-pressed="true"] { border-color: rgba(250,236,178,.55); color: var(--mant); }
+.verme[aria-pressed="true"] i { background: var(--mant); border-color: var(--mant); box-shadow: 0 0 8px rgba(250,236,178,.7); }
+.verme:active, .minimizar:active { transform: scale(.97); }
 .datos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 0 10px; }
 .datos div { background: rgba(244,236,221,.06); border-radius: 10px; padding: 8px 10px; }
 .datos dt { font: 500 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--suave); margin-bottom: 5px; }
@@ -222,6 +243,7 @@ body.en-asiento, body.volando { overflow: hidden; }
   html { scroll-behavior: auto; }
   .punto { animation: none; }
   .panel-asiento .tarjeta, .panel-flotante .tarjeta { animation: none; }
+  .detalle, .minimizar svg { transition: none; }
   .progreso .relleno, #lienzo, #velo, .pista { transition: none; }
 }
 

@@ -74,6 +74,20 @@ export function camaraPOV(tl, pov, arrastre = { yaw: 0, pitch: 0, activo: false 
   return { pos: pov.pos.clone(), mira: pov.pos.clone().add(dir.multiplyScalar(5)) };
 }
 
+// Verse sentado: la cámara gira alrededor de la cabeza del pasajero (detrás, arriba y un poco de lado) con la misma
+// mirada que desde el asiento: arrastrar a los lados le da la vuelta; arriba/abajo sube o baja la cámara.
+// dist en unidades de la nave (0,62 ≈ 1,5 m adentro). pov.techo (si existe) es la altura máxima de la cámara.
+export function camaraTercera(tl, pov, arrastre = { yaw: 0, pitch: 0 }, dist = 0.62) {
+  const c = angulos(pov.pos, pov.centro);
+  const yaw = c.yaw + arrastre.yaw, pitch = c.pitch + arrastre.pitch;
+  const elev = clamp(0.62 - pitch * 0.9, 0.25, 1.2);
+  const az = yaw + 0.45; // un poco de lado: se ve el casco y el visor, no solo la nuca
+  const pos = pov.pos.clone().add(V(-Math.sin(az) * Math.cos(elev) * dist, Math.sin(elev) * dist, Math.cos(az) * Math.cos(elev) * dist));
+  if (pov.techo != null && pos.y > pov.techo) pos.y = pov.techo;
+  const mira = pov.pos.clone().add(V(Math.sin(yaw) * dist * 0.35, -0.03, -Math.cos(yaw) * dist * 0.35));
+  return { pos, mira };
+}
+
 // Orientación del celular (deviceorientation: alpha, beta, gamma en grados; ángulo de la pantalla en radianes) →
 // hacia dónde mira la parte de atrás del celular, como { yaw, pitch } del mundo. Misma convención que camaraPOV.
 // El yaw sale de la dirección horizontal "de frente" aunque el celular esté casi acostado (ahí la parte de atrás

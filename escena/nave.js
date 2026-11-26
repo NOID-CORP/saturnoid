@@ -5,15 +5,34 @@
 import * as THREE from 'three';
 import { mulberry32, lienzo, temblor, clamp, C } from './util.js';
 
-// Alturas de cada sección (metros, en coordenadas de la nave). El piso de cada interior va en .piso.
+// Escala: la nave mide 10 unidades de ancho, pero adentro una unidad son 2,5 m (ESCALA_INTERIOR = 0,4 unidades por
+// metro). O sea, la nave real tiene 25 m de ancho y ~135 m de alto: así caben de verdad los 1.000 pasajeros, cada
+// clase en pisos circulares que dan la vuelta completa (las cuentas están en escena/interiores.js).
+export const ESCALA_INTERIOR = 0.4;
+
+// Alturas de cada sección (en unidades de la nave). .piso es el piso del interior; .alto, la altura del techo en metros.
+// Los pisos van alineados con las ventanas de afuera: ventana a ~1,4 m del piso (a la altura de los ojos sentados).
 export const SECCIONES = {
-  turista: { piso: 7.0, techo: 9.6, desde: 6, hasta: 10.4 },
-  luna: { piso: 11.0, techo: 13.6, desde: 10.4, hasta: 14 },
-  orbita: { piso: 15.0, techo: 18.4, desde: 14, hasta: 26 },
-  anillo: { piso: 27.6, techo: 32.4, desde: 26, hasta: 34 },
-  cabina: { piso: 35.0, techo: 39.6, desde: 34, hasta: 42 },
+  turista: { piso: 7.0, alto: 2.4, desde: 6, hasta: 10.4 },                   // 1 piso, sin ventanas
+  luna: { piso: 11.85, alto: 2.6, desde: 10.4, hasta: 14 },                   // 1 piso: la fila de ojos de buey a 12,4
+  orbita: { piso: 16.45, pisos: [16.45, 22.05], alto: 2.9, desde: 14, hasta: 26 }, // 2 pisos: las 2 filas de ventanas
+  anillo: { piso: 27.3, alto: 2.0, desde: 26, hasta: 34 },                    // sobre el anillo, una cúpula por suite
+  cabina: { piso: 36.0, alto: 9.0, desde: 34, hasta: 42 },                    // el ventanal va de 36,4 a 38,6
 };
 export const RADIO_CASCO = 5;
+
+// Cúpulas de Clase Anillo: una por suite, en tres círculos sobre el anillo (de afuera hacia adentro).
+// 46 + 38 + 30 = 114: las 100 del cupo y lugar para los que suben de Turista cada episodio.
+// La cúpula 0 de cada círculo queda hacia -z (por ahí entra la cámara a la del pasajero que se busca).
+export const ANILLO_Y = 27.3;
+export const CUPULAS = { radio: 0.58, alto: 1.35, circulos: [{ r: 8.5, n: 46 }, { r: 7.15, n: 38 }, { r: 5.85, n: 30 }] };
+export const TOTAL_CUPULAS = CUPULAS.circulos.reduce((s, c) => s + c.n, 0);
+// Suite nº i (0 = A-01) → { circulo, j }: primero el círculo de afuera (mejor vista), luego los de adentro.
+export function cupulaDeSuite(i) {
+  let k = ((i % TOTAL_CUPULAS) + TOTAL_CUPULAS) % TOTAL_CUPULAS;
+  for (let c = 0; c < CUPULAS.circulos.length; c++) { if (k < CUPULAS.circulos[c].n) return { circulo: c, j: k }; k -= CUPULAS.circulos[c].n; }
+  return { circulo: 0, j: 0 };
+}
 const Y0 = 3.6, Y1 = 58;
 
 export function radioEn(y) {
@@ -214,18 +233,24 @@ export function crearNave({ calidad = 'media' } = {}) {
   cuerpo.add(anillo);
   const canto = new THREE.Mesh(new THREE.TorusGeometry(9.2, 0.12, 8, 96), matTinto);
   canto.rotation.x = Math.PI / 2; canto.position.y = 27.3; cuerpo.add(canto);
-  const matCupula = new THREE.MeshStandardMaterial({ color: '#d8e6f5', transparent: true, opacity: 0.08, roughness: 0.05, metalness: 0.1, emissive: new THREE.Color('#ffc46b'), emissiveIntensity: 0.16, depthWrite: false });
+  // Una cúpula de cristal por suite (ver CUPULAS): vidrio, aro dorado y una lucecita cálida adentro. Van instanciadas:
+  // 114 cúpulas son 3 dibujos, no 342.
+  const matCupula = new THREE.MeshStandardMaterial({ color: '#d8e6f5', transparent: true, opacity: 0.1, roughness: 0.05, metalness: 0.1, emissive: new THREE.Color('#ffc46b'), emissiveIntensity: 0.16, depthWrite: false });
   const matMarco = new THREE.MeshStandardMaterial({ color: C.oro, roughness: 0.35, metalness: 0.7 });
-  const cupulas = [];
-  const NC = 12;
-  for (let k = 0; k < NC; k++) {
-    const a = Math.PI + (k / NC) * Math.PI * 2; // la primera queda hacia -z (la del pasajero que busca)
-    const cup = new THREE.Mesh(new THREE.SphereGeometry(1.9, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), matCupula);
-    cup.position.set(Math.sin(a) * 6.5, 27.35, Math.cos(a) * 6.5);
-    cuerpo.add(cup); cupulas.push(cup);
-    const aro = new THREE.Mesh(new THREE.TorusGeometry(1.9, 0.08, 6, 40), matMarco);
-    aro.rotation.x = Math.PI / 2; aro.position.copy(cup.position); cuerpo.add(aro);
-  }
+  const matLampara = new THREE.MeshBasicMaterial({ color: '#ffcf8a', toneMapped: false });
+  const { radio: RC, alto: AC } = CUPULAS;
+  const gCup = new THREE.SphereGeometry(RC, 20, 8, 0, Math.PI * 2, 0, Math.PI / 2); gCup.scale(1, AC, 1);
+  const cupulas = new THREE.InstancedMesh(gCup, matCupula, TOTAL_CUPULAS);
+  const aros = new THREE.InstancedMesh(new THREE.TorusGeometry(RC, 0.035, 5, 28).rotateX(Math.PI / 2), matMarco, TOTAL_CUPULAS);
+  const lamparas = new THREE.InstancedMesh(new THREE.SphereGeometry(0.05, 8, 6), matLampara, TOTAL_CUPULAS);
+  { const m = new THREE.Matrix4(); let k = 0;
+    for (const c of CUPULAS.circulos) for (let j = 0; j < c.n; j++, k++) {
+      const a = Math.PI + (j / c.n) * Math.PI * 2;
+      const x = Math.sin(a) * c.r, z = Math.cos(a) * c.r;
+      m.makeTranslation(x, ANILLO_Y + 0.01, z); cupulas.setMatrixAt(k, m); aros.setMatrixAt(k, m);
+      m.makeTranslation(x - Math.sin(a) * 0.2, ANILLO_Y + 0.5, z - Math.cos(a) * 0.2); lamparas.setMatrixAt(k, m);
+    } }
+  for (const im of [cupulas, aros, lamparas]) { im.computeBoundingSphere(); cuerpo.add(im); }
 
   // Motores: 4 toberas. Motor 1 enciende el par diagonal; motor 2, las cuatro.
   const matTobera = new THREE.MeshStandardMaterial({ color: '#2a2522', roughness: 0.4, metalness: 0.8, side: THREE.DoubleSide });

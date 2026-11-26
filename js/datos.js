@@ -36,6 +36,13 @@ export async function tripulacion() {
   return pedir(`saturnoid_pasajeros?es_tripulacion=eq.true&select=usuario,asiento&order=asiento`);
 }
 
+// Asientos ocupados de una clase (solo los códigos, sin usuarios): con esto se dibuja el piso completo como está.
+// Quien pidió salir (oculto) no aparece, así que su asiento se ve libre.
+export async function asientosOcupados(clase) {
+  const filas = await pedir(`saturnoid_pasajeros?clase=eq.${encodeURIComponent(clase)}&select=asiento`);
+  return new Set(filas.map((f) => f.asiento));
+}
+
 // Ocupantes de los asientos de alrededor → Map(asiento → { usuario }).
 export async function ocupantesCerca(asiento) {
   const cods = vecinos(asiento, 2);

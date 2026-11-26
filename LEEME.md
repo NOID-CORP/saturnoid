@@ -119,6 +119,9 @@ node pruebas/probar.mjs --sin3d prueba_0120     # plan B sin WebGL
 node pruebas/carga.mjs        # tiempos con 4G simulado
 node pruebas/respuesta.mjs    # del toque en "Buscar" al vuelo, con procesador de celular simulado
 node pruebas/mirada.mjs       # mirar desde el asiento: dedo, segundo dedo, inercia, topes, doble toque, giroscopio y fluidez
+node pruebas/pisos.mjs        # un asiento por clase mirando al frente, a los lados y atrás → pruebas/capturas/pisos/
+node pruebas/afuera.mjs [u]   # la nave por fuera y el vuelo hasta el asiento, en cuadros
+node pruebas/tarjeta.mjs      # minimizar la tarjeta del asiento y "Verme sentado" en cada clase
 node pruebas/fotos.mjs        # regenera las imágenes de portada (assets/img/) desde la escena
 ```
 
@@ -133,6 +136,9 @@ Parámetros de la URL: `?u=usuario` abre directo en su asiento; `?calidad=baja|m
   «Mirar con el celular» (el sistema pide permiso, solo se puede dentro de un toque). Solo gira a los lados y arriba/abajo,
   nunca inclina el horizonte. El mismo botón lo apaga.
 - **Teclado**: flechas (con Mayúscula, pasos largos).
+- **Verme sentado** (botón sobre la tarjeta): la cámara sale de tu cabeza y gira alrededor de tu pasajero, que aparece
+  sentado con el nametag «TÚ»; el mismo dedo y el mismo celular lo giran. La tarjeta se minimiza con la flecha de
+  arriba a la derecha (queda una línea: clase · asiento y usuario) y el navegador recuerda cómo la dejó.
 - Todo se suaviza por tiempo (igual de fluido a 30, 60 o 120 Hz). Con «reducir movimiento» del sistema no hay recorrido
   automático, ni inercia, ni el giroscopio se enciende solo.
 - La conversión del sensor a yaw/pitch está en `escena/camara.js` (`miradaSensor`), junto a `recorridoPOV` y `limitesPOV`.
@@ -148,8 +154,26 @@ video puede pedir el cuadro exacto `t`. Three.js 0.181.2 va dentro de `lib/three
 | `cielo.js` | Estrellas y el planeta Saturnoid (océanos, bosques, nubes, atmósfera, anillo en colores NOID) |
 | `nave.js` | La nave por secciones (Turista, Luna, Órbita, Anillo con cúpulas, Cabina), motores por nivel, vapor |
 | `plataforma.js` | Suelo, plataforma, torre, reflectores y montañas |
-| `interiores.js` | El interior de cada clase alrededor de un asiento, con los vecinos reales |
+| `interiores.js` | El piso completo de cada clase, con todos sus asientos (ocupados según la base) y los vecinos con nombre |
 | `nametags.js` | Nametags estilo Minecraft y los pasajeros (casco con visor, sin caras) |
 | `camara.js` | Cámaras: portada, vuelo hasta el asiento y vista desde el asiento |
+
+### Por qué caben los 1.000
+
+Por fuera la nave mide 10 unidades de ancho, pero adentro una unidad son 2,5 m (`ESCALA_INTERIOR` = 0,4 en `nave.js`):
+la nave real tiene 25 m de ancho. Cada clase es un piso circular que da la vuelta completa alrededor del núcleo
+(ascensor y escaleras), alineado con las ventanas que se ven por fuera:
+
+| Clase | Cómo caben | Piso |
+|---|---|---|
+| Turista | 67 filas × 6 = 400, a 0,78 m entre filas; ocupan 292° de la vuelta y el resto es el baño (1 para 200) | 1, sin ventanas |
+| Clase Luna | 40 filas × 5 = 200, la vuelta completa (1,6 m entre filas) | 1, la fila de ojos de buey |
+| Clase Órbita | 75 filas × 4 = 300 en 2 pisos de 38 filas (1,7 m: el asiento se vuelve cama) | 2, las 2 filas de ventanas |
+| Clase Anillo | una cúpula de 2,9 m por suite sobre el anillo: 114 (las 100 del cupo + los que suben de Turista) | el anillo |
+| Cabina | la investigadora y 9 tripulantes en un puente de 24 m | 1, el ventanal |
+
+Al buscar a alguien, la web trae qué asientos de su clase están ocupados (solo los códigos, sin nombres): el piso se
+dibuja tal como está, con la gente donde hay gente. Solo los vecinos de al lado llevan nametag. Las multitudes van
+instanciadas (una malla por pieza) y las lejanas con menos detalle; en calidad baja se dibujan 16 filas a cada lado.
 
 `nivel` va de 0 a 3 y puede ser decimal (0 en espera, 1 motor 1, 2 motor 2, 3 despegue): así un video anima el encendido.

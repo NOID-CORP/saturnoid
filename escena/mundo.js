@@ -90,8 +90,11 @@ export function crearMundo({ canvas, calidad = 'media', ancho, alto }) {
   if (ancho && alto) redimensionar(ancho, alto);
 
   const mira = new THREE.Vector3();
-  function ponerCamara({ pos, mira: m, fov }, sacudida = 0, t = 0) {
+  function ponerCamara(cam, sacudida = 0, t = 0) {
+    const { pos, mira: m, fov } = cam;
     camara.position.copy(pos);
+    // adentro todo va a escala (0,4 unidades por metro): el plano cercano baja para no cortar el asiento de adelante
+    const cerca = cam.cerca ?? 0.05; if (camara.near !== cerca) camara.near = cerca;
     if (sacudida) camara.position.add(new THREE.Vector3(temblor(t, 4) * sacudida, temblor(t, 5) * sacudida, temblor(t, 6) * sacudida));
     mira.copy(m); camara.lookAt(mira);
     if (fov && Math.abs(camara.fov - fov) > 0.01) camara.fov = fov;
@@ -131,12 +134,12 @@ export function crearMundo({ canvas, calidad = 'media', ancho, alto }) {
       interior?.actualizar(t);
       // los nametags se ven a través de las paredes: solo aparecen cuando la cámara ya está adentro
       if (interior) { const k = Math.min(1, Math.max(0, (adentro - 0.7) / 0.3)); for (const s of interior.etiquetas) { s.visible = k > 0; s.material.opacity = k; } }
-      ponerCamara(cam, sacudida, t);
+      ponerCamara({ ...cam, cerca: adentro > 0.5 ? 0.02 : 0.05 }, sacudida, t);
       dibujar();
     },
     prepararAsiento(clase, opciones) {
       this.quitarAsiento();
-      interior = crearInterior(clase, { ...opciones, luces: lucesInterior });
+      interior = crearInterior(clase, { calidad, ...opciones, luces: lucesInterior });
       nave.cuerpo.add(interior.grupo);
       return interior;
     },
@@ -148,7 +151,7 @@ export function crearMundo({ canvas, calidad = 'media', ancho, alto }) {
       for (const [clase, asiento] of Object.entries(muestras)) {
         if (interior) return; // alguien ya buscó: no estorbar
         const ocupantes = new Map(['C-03', 'A-02', 'O-02B', 'L-02B', 'T-002B'].map((c) => [c, { usuario: 'x' }]));
-        const tmp = crearInterior(clase, { asiento, usuario: 'x', ocupantes, info: {}, luces: lucesInterior });
+        const tmp = crearInterior(clase, { asiento, usuario: 'x', ocupantes, info: {}, calidad, luces: lucesInterior });
         tmp.grupo.traverse((n) => { if (n.isSprite) n.material.opacity = 0; });
         nave.cuerpo.add(tmp.grupo);
         // Con bloom la escena se dibuja en la capa del composer (no en la pantalla) y three.js usa otros programas
@@ -174,7 +177,7 @@ export function crearMundo({ canvas, calidad = 'media', ancho, alto }) {
     capturar(cam, { ancho = 1080, alto = 860 } = {}) {
       const [w0, h0, px0, dx, dy] = [W, H, renderer.getPixelRatio(), desplazX, desplazY];
       renderer.setPixelRatio(1); redimensionar(ancho, alto); desplazX = 0; desplazY = 0;
-      if (cam) ponerCamara({ ...cam, fov: 62 });
+      if (cam) ponerCamara({ ...cam, fov: 62, cerca: interior ? 0.02 : 0.05 });
       dibujar();
       const c = document.createElement('canvas'); c.width = ancho; c.height = alto;
       c.getContext('2d').drawImage(renderer.domElement, 0, 0, ancho, alto);
