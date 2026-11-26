@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 // Asigna asientos a los comentarios de un reel, por orden de llegada.
 //   node admin/asignar.mjs comentarios.csv [--episodio N] [--fecha 2026-11-23] [--prueba]
-// El CSV va en orden (el primero que comentó, arriba): usuario,ciudad,hora
+// El CSV va en orden (el primero que comentó, arriba): usuario,ciudad,hora[,lleva[,objeto]]
+//   lleva: el comentario tal cual. objeto: lo que tiene en las manos en el 3D (OBJETOS en js/asientos.js, p. ej.
+//   gato, fuego o balon+fuego); si va vacío se adivina del comentario (🔥 = fuego). Revisarlo antes de responder s.
 //   hora: "2026-11-23 10:15" o "2026-11-23T10:15:00-05:00", o solo "10:15" si se pasa --fecha.
 //   Las horas sin zona se toman como hora de Colombia (-05:00).
 // Salta a quien ya tiene asiento, muestra un resumen y pide confirmación antes de escribir.
 import { readFileSync } from 'node:fs';
-import { sql, preguntar, leerEstado, leerOcupacion, planificar, insertarSQL, resumenNivel, CLASES } from './lib.mjs';
-import { normalizarUsuario, USUARIO_VALIDO } from '../js/asientos.js';
+import { sql, lit, preguntar, leerEstado, leerOcupacion, planificar, insertarSQL, resumenNivel, CLASES } from './lib.mjs';
+import { normalizarUsuario, USUARIO_VALIDO, adivinarObjeto, OBJETOS, OBJETO_VALIDO } from '../js/asientos.js';
 
 const args = process.argv.slice(2);
 const opt = (k) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : undefined; };
@@ -44,6 +46,15 @@ function hora(texto, fecha) {
   return d.toISOString();
 }
 
+const textoLimpio = (c) => (c || '').replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 140) || null;
+function objetoDe(clave, lleva) {
+  const k = (clave || '').trim().toLowerCase();
+  if (k) {
+    if (!OBJETO_VALIDO.test(k) || !OBJETOS[k.split('+')[0]]) throw new Error(`Objeto desconocido "${clave}" (ver OBJETOS en js/asientos.js)`);
+    return k;
+  }
+  return lleva ? adivinarObjeto(lleva) : null;
+}
 const ciudadLimpia = (c) => (c || '').replace(/[\u0000-\u001f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60) || null;
 
 const lineas = readFileSync(archivo, 'utf8').replace(/^﻿/, '').split(/\r?\n/).filter((l) => l.trim());
@@ -51,16 +62,17 @@ const estado = await leerEstado();
 const episodio = opt('--episodio') ? parseInt(opt('--episodio'), 10) : estado.episodio_actual;
 const ocup = await leerOcupacion();
 
-const invalidos = []; const repetidos = []; const yaTenian = []; const nuevos = []; const vistos = new Set();
+const invalidos = []; const repetidos = []; const yaTenian = []; const nuevos = []; const vistos = new Set(); const equipajeViejos = [];
 for (const [k, l] of lineas.entries()) {
-  const [u, ciudad, h] = celdas(l);
+  const [u, ciudad, h, llevaTxt, obj] = celdas(l);
   if (k === 0 && u.toLowerCase() === 'usuario') continue;
   const usuario = normalizarUsuario(u);
   if (!USUARIO_VALIDO.test(usuario)) { invalidos.push(u); continue; }
   if (vistos.has(usuario)) { repetidos.push(usuario); continue; }
   vistos.add(usuario);
-  if (ocup.usados.has(usuario)) { yaTenian.push(usuario); continue; }
-  nuevos.push({ usuario, ciudad: ciudadLimpia(ciudad), hora: hora(h, opt('--fecha')) });
+  const lleva = textoLimpio(llevaTxt), objeto = objetoDe(obj, lleva);
+  if (ocup.usados.has(usuario)) { yaTenian.push(usuario); if (lleva) equipajeViejos.push({ usuario, lleva, objeto }); continue; }
+  nuevos.push({ usuario, ciudad: ciudadLimpia(ciudad), hora: hora(h, opt('--fecha')), lleva, objeto });
 }
 
 const { plan, cuenta, fuera } = planificar(nuevos, ocup, estado);
@@ -75,7 +87,7 @@ for (const c of ['anillo', 'orbita', 'luna', 'turista']) {
   if (!l.length) continue;
   console.log(`\n${CLASES[c].nombre}: ${l.length} nuevos`);
   const mostrar = l.length > 8 ? [...l.slice(0, 5), null, ...l.slice(-2)] : l;
-  for (const p of mostrar) console.log(p ? `  #${String(p.numero).padStart(4)}  ${p.asiento.padEnd(7)} @${p.usuario}${p.ciudad ? ' · ' + p.ciudad : ''}` : '  …');
+  for (const p of mostrar) console.log(p ? `  #${String(p.numero).padStart(4)}  ${p.asiento.padEnd(7)} @${p.usuario}${p.ciudad ? ' · ' + p.ciudad : ''}${p.objeto ? `  [${p.objeto}] «${p.lleva}»` : ''}` : '  …');
 }
 console.log(`\nDespués: ${cuenta.pasajeros} pasajeros · Anillo ${cuenta.anillo}/${estado.cupo_anillo} · Órbita ${cuenta.orbita}/${estado.cupo_orbita} · Luna ${cuenta.luna}/${estado.cupo_luna} · Turista ${cuenta.turista}/${estado.cupo_turista}`);
 if (fuera.length) console.log(`\n¡NAVE LLENA! ${fuera.length} no caben y NO se suben: ${fuera.slice(0, 10).map((f) => '@' + f.usuario).join(', ')}${fuera.length > 10 ? '…' : ''}`);
@@ -85,5 +97,7 @@ if (!plan.length) { console.log('No hay nada nuevo que subir.'); process.exit(0)
 if (!(await preguntar('¿Subir estos asientos a la web? (s/n) '))) { console.log('Cancelado: no se escribió nada.'); process.exit(0); }
 
 for (let i = 0; i < plan.length; i += 400) await sql(insertarSQL(plan.slice(i, i + 400), episodio, esPrueba));
+// quien ya tenía asiento (p. ej. la tripulación) y comentó: se le pone el equipaje si todavía no tenía
+for (const e of equipajeViejos) await sql(`update public.saturnoid_pasajeros set lleva = ${lit(e.lleva)}, objeto = ${lit(e.objeto)} where usuario = ${lit(e.usuario)} and lleva is null`);
 const [{ n }] = await sql('select count(*)::int as n from public.saturnoid_pasajeros where not es_tripulacion');
 console.log(`Listo. Pasajeros en la base: ${n}. Revisa noidcorp.com/saturnoid`);

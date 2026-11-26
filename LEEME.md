@@ -19,10 +19,18 @@ Todo se corre desde esta carpeta (`~/Documents/03 NOID/saturnoid`). Cada script 
 en `datos/ep2.csv`:
 
 ```
-usuario,ciudad,hora
-juanita.perez,Bucaramanga,2026-11-24 10:01
-@Pedro_88,"Girón, Santander",2026-11-24 10:03
+usuario,ciudad,hora,lleva,objeto
+juanita.perez,Bucaramanga,2026-11-24 10:01,Llevo a mi gato,
+@Pedro_88,"Girón, Santander",2026-11-24 10:03,Llevo a Jcrack🔥,bucaros+fuego
 ```
+
+- **lleva** es el comentario tal cual: sale en su tarjeta, en el pase («EQUIPAJE») y en «Ya a bordo» de la portada.
+- **objeto** es lo que tiene en las manos en el 3D (`OBJETOS` en `js/asientos.js`, modelos en `escena/objetos.js`;
+  con `+fuego` el objeto va en llamas). Si va vacío, el script lo adivina del comentario (🔥 = fuego) y lo muestra
+  entre corchetes en el resumen: **revisarlo antes de responder `s`**. Si nombra a alguien o algo raro (Naia = un perrito,
+  Jcrack = futbolista), se averigua y se le pone algo con comedia (Jcrack 🔥 → `bucaros+fuego`, balón del Bucaramanga en llamas).
+- Quien ya tenía asiento (la tripulación) y comenta: se le pone el equipaje si aún no tenía.
+- Para corregir uno ya subido: `update public.saturnoid_pasajeros set objeto = 'perro' where usuario = '…'` (ver `admin/lib.mjs` → `sql`).
 
 - El usuario puede ir con o sin `@`, en mayúsculas o como enlace de perfil: el script lo limpia.
 - La ciudad es la que la persona escribió (puede ir vacía). La hora puede ser solo `10:03` si pasas `--fecha`.
@@ -67,7 +75,7 @@ node admin/estado.mjs episodio=2 reel=https://www.instagram.com/reel/XXXXXXXX/
 **Antes de publicar el episodio 1: `node admin/prueba.mjs borrar`.** Mientras haya datos de prueba, la web lo dice
 arriba ("Datos de prueba · N de ejemplo").
 
-Las tablas se crearon con `admin/sql/esquema.sql` (sin datos). **Clase Luna (23-nov):** una base creada antes se pone
+Las tablas se crearon con `admin/sql/esquema.sql` (sin datos); el equipaje (`lleva`, `objeto`) se agregó con `admin/sql/equipaje.sql` (26-nov, ya corrido). **Clase Luna (23-nov):** una base creada antes se pone
 al día una sola vez con `admin/sql/clase-luna.sql` (Supabase → SQL Editor → pegar → Run): agrega `luna` a las clases,
 `cupo_luna` (200), `dia_actual`, deja Turista en 400 y el contador de Luna en `saturnoid_resumen`. Mientras no se corra,
 la web ya muestra las 4 clases (parte Turista en 200 + 400), pero `asignar.mjs` y `prueba.mjs` no escriben nada. Columnas extra a las del encargo: `numero`

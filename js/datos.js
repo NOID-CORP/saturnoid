@@ -2,7 +2,7 @@
 import { SUPABASE_URL, SUPABASE_LLAVE } from './config.js';
 import { vecinos } from './asientos.js';
 
-const CAMPOS = 'usuario,clase,asiento,numero,ciudad,comentado_en,episodio,es_tripulacion,ascendido_en,es_prueba';
+const CAMPOS = 'usuario,clase,asiento,numero,ciudad,comentado_en,episodio,es_tripulacion,ascendido_en,es_prueba,lleva,objeto';
 
 // Solo GET y la clave (pública) en la URL, sin cabeceras propias: así el navegador no hace la consulta previa
 // de CORS (OPTIONS) y cada lectura llega un viaje de ida y vuelta antes.
@@ -43,12 +43,17 @@ export async function asientosOcupados(clase) {
   return new Set(filas.map((f) => f.asiento));
 }
 
-// Ocupantes de los asientos de alrededor → Map(asiento → { usuario }).
+// Ocupantes de los asientos de alrededor → Map(asiento → { usuario, objeto }) (objeto: lo que llevan en las manos).
 export async function ocupantesCerca(asiento) {
   const cods = vecinos(asiento, 2);
   const m = new Map();
   if (!cods.length) return m;
-  const filas = await pedir(`saturnoid_pasajeros?asiento=in.(${cods.join(',')})&select=usuario,asiento`);
-  for (const f of filas) m.set(f.asiento, { usuario: f.usuario });
+  const filas = await pedir(`saturnoid_pasajeros?asiento=in.(${cods.join(',')})&select=usuario,asiento,objeto`);
+  for (const f of filas) m.set(f.asiento, { usuario: f.usuario, objeto: f.objeto || null });
   return m;
+}
+
+// Los últimos que subieron, con lo que comentaron (para la portada: «Ya a bordo»).
+export async function ultimosABordo(n = 40) {
+  return pedir(`saturnoid_pasajeros?es_tripulacion=eq.false&lleva=not.is.null&select=usuario,asiento,clase,numero,lleva&order=numero.desc&limit=${n}`);
 }

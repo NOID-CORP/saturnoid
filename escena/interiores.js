@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { crearNametag, crearPasajero, crearMultitud } from './nametags.js';
+import { ponerObjeto } from './objetos.js';
 import { SECCIONES, ESCALA_INTERIOR as K, CUPULAS, ANILLO_Y, TOTAL_CUPULAS, cupulaDeSuite } from './nave.js';
 import { DIR_PLANETA } from './cielo.js';
 import { lienzo, mulberry32, semilla, temblor, clamp, C } from './util.js';
@@ -221,6 +222,7 @@ const haciaPlaneta = (desde, dist = 30) => desde.clone().add(DIR_PLANETA.clone()
 function sentar(grupo, ocupante, { pos, rotY, clase, traje, detalle, alturaTag = 1.12, tag }) {
   if (!ocupante) return null;
   const p = crearPasajero(traje, detalle); p.position.copy(pos); p.rotation.y = rotY; grupo.add(p);
+  if (ocupante.objeto) ponerObjeto(p, ocupante.objeto); // lo que comentó, en las manos
   const nt = crearNametag(ocupante.etiqueta || ocupante.usuario, tag || tagDe(clase), { etiqueta: ocupante.rol || null });
   nt.position.copy(pos).add(V(0, alturaTag, 0)); grupo.add(nt);
   return p;
@@ -359,6 +361,7 @@ function anillo(o) {
       (u.centro.distanceTo(P(circ[yo.circulo].r / K, Math.PI)) < 7 ? cerca : ocupadas).push(L);
       const oc = ocupantes.get(cod);
       if (oc) { const nt = crearNametag(oc.usuario, 'oro'); nt.position.copy(u.centro).add(V(0, 1.6, 0)); g.add(nt); }
+      if (oc?.objeto) ponerObjeto(g, oc.objeto, L);
     }
   }
   for (const p of Object.values(piezas)) g.add(repetir(p.g, p.mat, todas, p.m));
@@ -522,6 +525,7 @@ function filas(clase, o) {
       (Math.abs(d) <= 3 ? cerca : lejos).push(sentado);
       const oc = ocupantes.get(cod);
       if (oc && Math.abs(d) <= 1) { const nt = crearNametag(oc.usuario, tagDe(clase)); nt.position.copy(P(rad, a, hip + 1.08 + (col % 2) * 0.13)); g.add(nt); }
+      if (oc?.objeto) ponerObjeto(g, oc.objeto, sentado);
     }
   }
   const mA = esT ? mat('#6f6a62', 0.85) : mat('#8e949e', 0.45, 0.35), mB = esT ? mat('#6d665c', 0.9) : esL ? mat('#b7a6e8', 0.5) : mat(C.azul, 0.5);
@@ -694,7 +698,7 @@ function filas(clase, o) {
 }
 
 // ---------- entrada ----------
-// opciones: { asiento, usuario, ocupantes: Map(codigo → { usuario }), ocupados?: Set(codigo), calidad?,
+// opciones: { asiento, usuario, objeto?, ocupantes: Map(codigo → { usuario, objeto? }), ocupados?: Set(codigo), calidad?,
 //             info: { pasajeros, investigadora, nivel, nivelNombre, lineaMeta } }
 // ocupados: los asientos con dueño de esa clase (los demás se ven vacíos). Sin él, la clase se ve llena (videos).
 export function crearInterior(clase, opciones) {
@@ -708,10 +712,14 @@ export function crearInterior(clase, opciones) {
     const { pos, rotY, traje, detalle } = r.propio;
     const yo = new THREE.Group(); yo.visible = false;
     const p = crearPasajero(traje, detalle); p.position.copy(pos); p.rotation.y = rotY; yo.add(p);
+    if (o.objeto) ponerObjeto(p, o.objeto);
     const nt = crearNametag(o.usuario || 'tú', 'tu', { etiqueta: 'TÚ' }); nt.scale.divideScalar(K); nt.position.copy(pos).add(V(0, 1.14, 0)); yo.add(nt);
     r.grupo.add(yo);
     r.verme = (k) => { yo.visible = k > 0.15; nt.material.opacity = clamp((k - 0.15) / 0.5); };
   }
+  // lo que llevan en las manos (el fuego titila, la cola del perro se mueve…): se anima con el mismo t de la escena
+  const anims = []; r.grupo.traverse((n) => { if (n.userData.animarObjeto) anims.push(n.userData.animarObjeto); });
+  if (anims.length) { const base = r.actualizar.bind(r); r.actualizar = (t) => { base(t); for (const f of anims) f(t); }; }
   if (r.pov) {
     r.pov.techo = Number.isFinite(r.techo) ? o.aNave(V(0, r.techo, 0)).y : null;
     if (r.distTercera) r.pov.distTercera = r.distTercera * K;

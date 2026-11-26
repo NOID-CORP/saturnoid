@@ -96,9 +96,9 @@ export function planificar(nuevos, ocup, estado) {
 export function insertarSQL(plan, episodio, esPrueba = false) {
   const filas = plan.map((p) =>
     `(${lit(p.usuario)}, ${lit(p.clase)}, ${lit(p.asiento)}, ${lit(p.numero)}, ${lit(p.ciudad)}, ` +
-    `${p.hora ? lit(p.hora) + '::timestamptz' : 'null'}, ${lit(episodio)}, false, ${lit(esPrueba)})`
+    `${p.hora ? lit(p.hora) + '::timestamptz' : 'null'}, ${lit(episodio)}, false, ${lit(esPrueba)}, ${lit(p.lleva)}, ${lit(p.objeto)})`
   );
-  return `insert into public.saturnoid_pasajeros (usuario, clase, asiento, numero, ciudad, comentado_en, episodio, es_tripulacion, es_prueba)
+  return `insert into public.saturnoid_pasajeros (usuario, clase, asiento, numero, ciudad, comentado_en, episodio, es_tripulacion, es_prueba, lleva, objeto)
 values ${filas.join(',\n')}
 on conflict (usuario) do nothing;`;
 }

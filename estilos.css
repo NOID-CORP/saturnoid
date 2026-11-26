@@ -250,3 +250,20 @@ body.en-asiento, body.volando { overflow: hidden; }
 /* Modo foto (?foto): solo la escena, para generar las imágenes de portada */
 body.foto main, body.foto #barra, body.foto #aviso-prueba { display: none !important; }
 body.foto #lienzo { opacity: 1; transition: none; }
+
+/* Lo que lleva cada pasajero (su comentario): en la tarjeta y en «Ya a bordo» */
+.lleva { margin: 0 0 10px; font-size: 15px; line-height: 1.35; color: var(--texto); }
+.lleva span { display: block; margin-bottom: 3px; font: 500 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--suave); }
+.abordo-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.abordo { width: 100%; display: flex; flex-direction: column; gap: 6px; text-align: left; cursor: pointer; padding: 12px 14px;
+  border-radius: 14px; border: 1px solid var(--linea); background: rgba(11, 10, 16, .42); touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent; transition: border-color .2s, background .2s; --c: var(--texto); }
+.abordo:hover, .abordo:focus-visible { border-color: rgba(250, 236, 178, .45); background: rgba(11, 10, 16, .6); }
+.abordo:active { transform: scale(.98); }
+.abordo[data-clase="anillo"] { --c: var(--oro); }
+.abordo[data-clase="orbita"] { --c: var(--plata); }
+.abordo[data-clase="luna"] { --c: var(--lavanda); }
+.abordo .ab-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; min-width: 0; }
+.abordo .ab-cab b { font: 500 14px/1.2 var(--mono); color: var(--c); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.abordo .ab-cab small { flex: none; font: 500 11px/1 var(--mono); letter-spacing: .1em; color: var(--suave); }
+.abordo .ab-lleva { font-size: 15px; line-height: 1.3; color: var(--texto); overflow-wrap: anywhere; }

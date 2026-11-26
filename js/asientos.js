@@ -76,3 +76,36 @@ export function nivelDe(pasajeros, metas) {
   for (const m of metas) if (pasajeros >= m) n++;
   return n;
 }
+
+// Lo que cada pasajero lleva en las manos en el 3D (escena/objetos.js). La clave va en la columna `objeto`.
+export const OBJETOS = {
+  fuego: 'Fuego', gato: 'Gato', perro: 'Perro', celular: 'Celular', audifonos: 'Audífonos', computador: 'Computador',
+  carro: 'Carro', cama: 'Cama', corazon: 'Corazón (lleva a alguien)', libro: 'Libro', comida: 'Comida', planta: 'Planta',
+  musica: 'Guitarra', balon: 'Balón', bucaros: 'Balón del Atlético Bucaramanga', maleta: 'Maleta',
+};
+// Dos claves con + (p. ej. «balon+fuego»): el objeto en llamas. La segunda solo puede ser fuego.
+export const OBJETO_VALIDO = /^[a-z]{1,20}(\+fuego)?$/;
+
+// Adivina el objeto a partir del comentario. Si puso 🔥, lleva fuego (pedido de DON, 26-nov). Si no se reconoce
+// nada, maleta. Siempre se puede corregir a mano en el CSV (columna objeto) antes de subir.
+export function adivinarObjeto(texto = '') {
+  const t = texto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const reglas = [
+    ['fuego', /🔥|fuego|candela/u],
+    ['gato', /gat[oia]|michi|🐱|🐈/u],
+    ['perro', /perr[oia]|mascota|lomito|🐕|🐶/u],
+    ['celular', /celu|telefono|movil|iphone|📱/u],
+    ['audifonos', /audifono|aud[ií]fonos|airpods|cascos|🎧/u],
+    ['computador', /computa|portatil|laptop|pc\b|💻/u],
+    ['carro', /carro|auto\b|moto\b|🚗|🏍/u],
+    ['cama', /cama|almohada|cobija|🛏/u],
+    ['libro', /libro|📚|📖/u],
+    ['musica', /guitarra|musica|🎸|🎶|🎵/u],
+    ['balon', /balon|pelota|futbol|⚽|🏀/u],
+    ['planta', /planta|flor|🌱|🌻|🌹/u],
+    ['comida', /comida|pizza|cafe|arepa|empanada|chocolate|🍕|☕/u],
+    ['corazon', /\b(llevo|me llevo|traigo) a\b|novi[oa]|mama|papa|herman|amig|❤|💕/u],
+  ];
+  for (const [clave, re] of reglas) if (re.test(t)) return clave;
+  return 'maleta';
+}

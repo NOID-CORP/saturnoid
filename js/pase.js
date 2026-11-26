@@ -108,12 +108,23 @@ export async function crearPase(pasajero, { foto = null } = {}) {
   const y1 = top + 300, col2 = izq + ancho / 2 + 10;
   celda('ASIENTO', pasajero.asiento, izq + 50, y1, true);
   celda(pasajero.es_tripulacion ? 'TRIPULACIÓN' : 'PASAJERO Nº', pasajero.es_tripulacion ? 'FUNDADORA' : String(pasajero.numero ?? '—').padStart(4, '0'), col2, y1, !pasajero.es_tripulacion);
-  const y2 = y1 + 150;
+  const conEquipaje = !!pasajero.lleva; // con equipaje, las filas se juntan un poco para que quepa la cuarta
+  const y2 = y1 + (conEquipaje ? 140 : 150);
   celda('ABORDÓ', pasajero.es_tripulacion ? 'DESDE EL INICIO' : fechaCorta(pasajero.comentado_en), izq + 50, y2);
   celda('EPISODIO', pasajero.episodio ? String(pasajero.episodio) : '—', col2, y2);
-  const y3 = y2 + 120;
+  const y3 = y2 + (conEquipaje ? 110 : 120);
   celda('DESDE', (pasajero.ciudad || 'LA TIERRA').toUpperCase().slice(0, 18), izq + 50, y3);
   celda('DESTINO', 'SATURNOID', col2, y3);
+  if (conEquipaje) {
+    // lo que comentó (y lleva en las manos en el 3D), tal cual
+    const y4 = y3 + 110;
+    let txt = pasajero.lleva.replace(/\s+/g, ' ').trim();
+    if ([...txt].length > 44) txt = [...txt].slice(0, 42).join('') + '…';
+    txt = `«${txt}»`;
+    x.fillStyle = 'rgba(244,236,221,.6)'; x.font = '500 24px "DM Mono"'; x.fillText('EQUIPAJE', izq + 50, y4);
+    const pxE = ajustarTexto(x, txt, ancho - 100, 44, 600, 'Switzer');
+    x.fillStyle = color; x.font = `600 ${pxE}px Switzer`; x.fillText(txt, izq + 50, y4 + 54);
+  }
 
   // perforación y talón con código de barras (dibujo, sale igual siempre para el mismo usuario)
   const yp = top + alto + 10;

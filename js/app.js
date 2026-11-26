@@ -1,5 +1,5 @@
 // Página de Saturnoid: contadores en vivo, buscador, vuelo al asiento, pase de abordar y plan B sin 3D.
-import { resumen, buscarPasajero, tripulacion, ocupantesCerca, asientosOcupados } from './datos.js';
+import { resumen, buscarPasajero, tripulacion, ocupantesCerca, asientosOcupados, ultimosABordo } from './datos.js';
 import { CLASES, ORDEN_CLASES, NIVELES, nivelDe, normalizarUsuario, USUARIO_VALIDO, vecinos, leerAsiento, codigoAsiento } from './asientos.js';
 import { crearPase, aBlob, fechaCorta } from './pase.js';
 import { PERFIL_IG } from './config.js';
@@ -109,6 +109,21 @@ function textoCupos(q) {
   if (q.turista) return `Anillo, Órbita y Luna están llenas. Quedan <b>${num(q.turista)}</b> en Turista (y cada episodio 3 suben a Anillo).`;
   return 'La nave está llena: 1.000 pasajeros a bordo.';
 }
+
+// «Ya a bordo»: los últimos pasajeros con lo que comentaron. Tocar uno lo busca.
+async function cargarABordo() {
+  try {
+    const l = await ultimosABordo(40);
+    if (!l.length) return;
+    $('#abordo-lista').innerHTML = l.map((x) => `<li><button type="button" class="abordo" data-u="${esc(x.usuario)}" data-clase="${esc(x.clase)}">` +
+      `<span class="ab-cab"><b>@${esc(x.usuario)}</b><small>${esc(x.asiento)}</small></span><span class="ab-lleva">«${esc(x.lleva)}»</span></button></li>`).join('');
+    $('#abordo').hidden = false;
+  } catch { /* la sección queda oculta */ }
+}
+$('#abordo-lista').addEventListener('click', (e) => {
+  const b = e.target.closest('.abordo'); if (!b) return;
+  $('#usuario').value = b.dataset.u; buscar(b.dataset.u);
+});
 
 async function cargarTripulacion(pedido = tripulacion()) {
   try {
@@ -329,7 +344,7 @@ function abordar(p, ocupantes, ocupados) {
     nivelNombre: NIVELES[nivelObj].nombre, lineaMeta: R ? lineaMeta(R.pasajeros, R.estado.metas) : '',
   };
   // sin la lista de ocupados (falló la consulta), solo se ven los vecinos conocidos
-  const interior = mundo.prepararAsiento(p.clase, { asiento: p.asiento, usuario: p.usuario, ocupantes, info,
+  const interior = mundo.prepararAsiento(p.clase, { asiento: p.asiento, usuario: p.usuario, objeto: p.objeto, ocupantes, info,
     ocupados: ocupados || new Set([...ocupantes.keys(), p.asiento]) });
   const desde = { pos: mundo.camara.position.clone(), mira: mundo.camara.position.clone().add(mundo.camara.getWorldDirection(mundo.camara.position.clone()).multiplyScalar(40)) };
   vuelo = modulos.armarVuelo(desde, interior);
@@ -365,6 +380,9 @@ function pintarTarjeta(p, ocupantes) {
   $('#a-num-etq').textContent = p.es_tripulacion ? 'Tripulante' : 'Pasajero';
   $('#a-numero').textContent = p.es_tripulacion ? p.asiento.replace('C-', '') : `Nº ${String(p.numero ?? '—').padStart(4, '0')}`;
   $('#a-fecha').textContent = p.es_tripulacion ? 'Fundador' : fechaCorta(p.comentado_en);
+  // lo que comentó (y lleva en las manos en el 3D)
+  $('#a-lleva').hidden = !p.lleva;
+  if (p.lleva) $('#a-lleva').innerHTML = `<span>Llevas</span> «${esc(p.lleva)}»`;
   // vecinos de al lado (no toda la zona)
   const lado = vecinos(p.asiento, 0).map((cod) => ocupantes.get(cod)?.usuario).filter(Boolean);
   const inv = R?.estado?.investigadora;
@@ -479,6 +497,7 @@ if (MODO_FOTO) document.body.classList.add('foto');
 // la tripulación se pide a la vez que el resumen (se pinta cuando llegan los dos: usa el nombre de la investigadora)
 const pedidoTripulacion = tripulacion(); pedidoTripulacion.catch(() => {});
 const listoDatos = cargarResumen().then(() => cargarTripulacion(pedidoTripulacion));
+cargarABordo();
 setInterval(() => { if (!document.hidden) cargarResumen(); }, 60000);
 // el 3D arranca después del primer pintado, para que la página aparezca de una
 const listo3D = new Promise((ok) => requestAnimationFrame(() => setTimeout(() => iniciar3D().finally(ok), 30)));
