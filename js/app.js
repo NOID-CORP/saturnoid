@@ -3,6 +3,7 @@ import { resumen, buscarPasajero, tripulacion, ocupantesCerca } from './datos.js
 import { CLASES, ORDEN_CLASES, NIVELES, nivelDe, normalizarUsuario, USUARIO_VALIDO, vecinos, leerAsiento, codigoAsiento } from './asientos.js';
 import { crearPase, aBlob, fechaCorta } from './pase.js';
 import { PERFIL_IG } from './config.js';
+import { crearMirada } from './mirada.js';
 
 const $ = (s) => document.querySelector(s);
 const params = new URLSearchParams(location.search);
@@ -17,7 +18,7 @@ let modo = 'portada';   // portada | volando | asiento
 let vuelo = null, tVuelo0 = 0, tLlegada = 0;
 let nivelVis = 0, nivelObj = 0;
 let actual = null;      // pasajero en pantalla
-const arrastre = { yaw: 0, pitch: 0, activo: false };
+let mirada = null;      // dedo + celular + flechas desde el asiento (js/mirada.js)
 const DUR_VUELO = 5.6;
 
 // ---------- datos ----------
@@ -140,8 +141,8 @@ async function iniciar3D() {
     mundo = crearMundo({ canvas: lienzo, calidad: MODO_FOTO ? 'alta' : elegirCalidad() });
     ajustar();
     addEventListener('resize', ajustar);
+    prepararMirada(lienzo);
     requestAnimationFrame(bucle);
-    enganchar(lienzo);
   } catch (err) {
     console.error(err);
     planB();
@@ -171,6 +172,7 @@ function bucle(ahora) {
   requestAnimationFrame(bucle);
   if (document.hidden || !mundo) return;
   const t = MODO_FOTO ? 14 : (ahora - t0) / 1000;
+  const dt = (ahora - ultimo) / 1000;
   // ahorro: si la hoja tapa el 3D, cuadros a menos velocidad
   if (modo === 'portada' && scrollY > innerHeight * 1.1 && cuadros % 4) { cuadros++; return; }
   nivelVis += (nivelObj - nivelVis) * 0.012; // los motores se encienden por etapas, no de golpe
@@ -187,8 +189,11 @@ function bucle(ahora) {
     adentro = Math.min(1, Math.max(0, (p - 0.6) / 0.22));
     if (p >= 1) llegar(ahora);
   } else {
-    const tl = (ahora - tLlegada) / 1000;
-    cam = modulos.camaraPOV(tl, mundo.interior.pov, arrastre);
+    const tl = (ahora - tLlegada) / 1000, pov = mundo.interior.pov;
+    // la mirada (recorrido automático hasta que la persona tome el control, luego dedo + celular), suavizada
+    const v = mirada.actualizar(dt, mirada.tomada ? undefined : modulos.recorridoPOV(tl, pov));
+    cam = modulos.camaraPOV(tl, pov, { yaw: v.yaw, pitch: v.pitch, activo: true });
+    window.__mirada ??= () => ({ yaw: v.yaw, pitch: v.pitch }); // solo para pruebas/mirada.mjs
     cam.fov = aspecto < 0.85 ? 78 : 64;
     sacudida = mundo.interior.sacudida || 0;
     adentro = 1;
@@ -196,8 +201,8 @@ function bucle(ahora) {
   mundo.cuadro(t, { nivel: nivelVis, cam, sacudida, adentro });
   cuadros++;
   // si el teléfono no da, bajar calidad una vez
-  const dt = ahora - ultimo; ultimo = ahora;
-  if (cuadros > 30 && cuadros < 400 && dt > 55) lentos++;
+  ultimo = ahora;
+  if (cuadros > 30 && cuadros < 400 && dt > 0.055) lentos++;
   if (lentos > 40 && !mundo.bajado) { mundo.bajado = true; mundo.renderer.setPixelRatio(1); ajustar(); }
   if (primerCuadro) {
     primerCuadro = false; document.body.classList.add('con3d'); document.body.classList.remove('cargando'); window.__saturnoidListo = true;
@@ -208,30 +213,39 @@ function bucle(ahora) {
 }
 const lerpFov = (p, a) => { const ini = a < 0.85 ? 58 : 42, fin = a < 0.85 ? 78 : 64; const k = Math.min(1, Math.max(0, (p - 0.55) / 0.45)); return ini + (fin - ini) * k; };
 
-function enganchar(el) {
-  let x0 = 0, y0 = 0, yaw0 = 0, pitch0 = 0, activo = false;
-  el.addEventListener('pointerdown', (e) => {
-    if (modo !== 'asiento') return;
-    activo = true; x0 = e.clientX; y0 = e.clientY;
-    if (!arrastre.activo) { // toma el ángulo actual del recorrido como punto de partida
-      const d = mundo.camara.getWorldDirection(new (mundo.camara.position.constructor)());
-      const c = mundo.interior.pov; const dc = c.centro.clone().sub(c.pos);
-      arrastre.yaw = Math.atan2(d.x, -d.z) - Math.atan2(dc.x, -dc.z);
-      arrastre.pitch = Math.atan2(d.y, Math.hypot(d.x, d.z)) - Math.atan2(dc.y, Math.hypot(dc.x, dc.z));
-      arrastre.activo = true;
-    }
-    yaw0 = arrastre.yaw; pitch0 = arrastre.pitch;
-    el.setPointerCapture(e.pointerId);
+// Mirar alrededor desde el asiento: arrastrando (con inercia), moviendo el celular o con las flechas.
+function prepararMirada(lienzo) {
+  mirada = crearMirada({ elemento: lienzo, habilitada: () => modo === 'asiento', alMirar: pistaTrasMirar });
+  mirada.usarConversor(modulos.miradaSensor);
+  const boton = $('#a-sensor');
+  mirada.alCambiarSensor((s) => {
+    boton.hidden = !s.disponible || s.negado;
+    boton.setAttribute('aria-pressed', String(s.activo));
+    if (modo === 'asiento' && !mirada.tomada) $('#a-pista').textContent = textoPista();
+    if (s.negado) mostrarPista('Sin permiso de movimiento: arrastra para mirar', 4500);
   });
-  el.addEventListener('pointermove', (e) => {
-    if (!activo) return;
-    const k = 3.2 / Math.max(innerWidth, 360);
-    arrastre.yaw = yaw0 + (e.clientX - x0) * k;
-    arrastre.pitch = Math.max(-0.9, Math.min(0.9, pitch0 + (e.clientY - y0) * k));
-    $('#a-pista').hidden = true;
+  // en iPhone el permiso solo se puede pedir dentro del toque: alternarSensor se llama directo aquí
+  boton.addEventListener('click', () => {
+    mirada.alternarSensor().then((on) => { if (on) mostrarPista('Mueve el celular para mirar a los lados', 3500); });
   });
-  const fin = () => { activo = false; };
-  el.addEventListener('pointerup', fin); el.addEventListener('pointercancel', fin);
+}
+
+const tactil = matchMedia('(pointer: coarse)').matches;
+function textoPista() {
+  if (mirada?.sensor.activo) return 'Mueve el celular o arrastra para mirar';
+  return tactil ? 'Arrastra para mirar alrededor' : 'Arrastra o usa las flechas para mirar';
+}
+let pistaReloj = null;
+function mostrarPista(texto, ms) {
+  const p = $('#a-pista');
+  clearTimeout(pistaReloj);
+  p.textContent = texto; p.hidden = false; p.classList.remove('se-va');
+  if (ms) pistaReloj = setTimeout(() => { p.classList.add('se-va'); }, ms);
+}
+// Cuando la persona ya miró por su cuenta, la pista enseña el doble toque (y luego se va).
+function pistaTrasMirar(como) {
+  if (como === 'centrar') { $('#a-pista').classList.add('se-va'); return; }
+  mostrarPista(tactil ? 'Toca dos veces para volver al frente' : 'Doble clic para volver al frente', 3800);
 }
 
 // ---------- buscador ----------
@@ -299,7 +313,7 @@ function abordar(p, ocupantes) {
   const interior = mundo.prepararAsiento(p.clase, { asiento: p.asiento, usuario: p.usuario, ocupantes, info });
   const desde = { pos: mundo.camara.position.clone(), mira: mundo.camara.position.clone().add(mundo.camara.getWorldDirection(mundo.camara.position.clone()).multiplyScalar(40)) };
   vuelo = modulos.armarVuelo(desde, interior);
-  arrastre.yaw = arrastre.pitch = 0; arrastre.activo = false;
+  mirada.reiniciar(modulos.limitesPOV(interior.pov));
   scrollTo({ top: 0, behavior: 'instant' });
   modo = 'volando'; tVuelo0 = performance.now();
   document.body.classList.add('volando');
@@ -315,7 +329,9 @@ function llegar(ahora) {
 function mostrarAsiento() {
   document.body.classList.add('en-asiento');
   const panel = $('#asiento'); panel.hidden = false; panel.dataset.clase = actual.clase;
-  $('#a-pista').hidden = !mundo;
+  clearTimeout(pistaReloj);
+  const p = $('#a-pista'); p.hidden = !mundo; p.classList.remove('se-va');
+  if (mundo) p.textContent = textoPista();
 }
 
 function pintarTarjeta(p, ocupantes) {

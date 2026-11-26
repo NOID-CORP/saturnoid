@@ -118,11 +118,24 @@ node pruebas/probar.mjs --escritorio prueba_0007
 node pruebas/probar.mjs --sin3d prueba_0120     # plan B sin WebGL
 node pruebas/carga.mjs        # tiempos con 4G simulado
 node pruebas/respuesta.mjs    # del toque en "Buscar" al vuelo, con procesador de celular simulado
+node pruebas/mirada.mjs       # mirar desde el asiento: dedo, segundo dedo, inercia, topes, doble toque, giroscopio y fluidez
 node pruebas/fotos.mjs        # regenera las imágenes de portada (assets/img/) desde la escena
 ```
 
 Parámetros de la URL: `?u=usuario` abre directo en su asiento; `?calidad=baja|media|alta` fuerza la calidad del 3D;
 `?foto&nivel=0` deja solo la escena (para capturas).
+
+## Mirar desde el asiento (`js/mirada.js`)
+
+- **Dedo**: la escena se queda pegada al dedo (como Street View); al soltar sigue con la velocidad del dedo y se frena
+  sola. Solo manda un dedo (un segundo dedo no hace saltar la vista). Doble toque: vuelve a mirar al frente.
+- **Celular (giroscopio)**: en Android se enciende solo con la primera lectura del sensor; en iPhone hay que tocar
+  «Mirar con el celular» (el sistema pide permiso, solo se puede dentro de un toque). Solo gira a los lados y arriba/abajo,
+  nunca inclina el horizonte. El mismo botón lo apaga.
+- **Teclado**: flechas (con Mayúscula, pasos largos).
+- Todo se suaviza por tiempo (igual de fluido a 30, 60 o 120 Hz). Con «reducir movimiento» del sistema no hay recorrido
+  automático, ni inercia, ni el giroscopio se enciende solo.
+- La conversión del sensor a yaw/pitch está en `escena/camara.js` (`miradaSensor`), junto a `recorridoPOV` y `limitesPOV`.
 
 ## La escena 3D (también para los videos con HyperFrames)
 
