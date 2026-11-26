@@ -190,9 +190,80 @@ function maleta() {
   return g;
 }
 
+// La Tierra entera, girando despacio (para el que se lleva «el mundo entero»).
+function mundo() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.3, 0);
+  const tierra = new THREE.Group(); tierra.rotation.z = 0.4; g.add(tierra);
+  tierra.add(malla(esfera(0.11, 24, 16), mat('#2f6fd1', 0.45, 0.1)));
+  const verde = mat('#4fae4a', 0.8), nube = mat('#ffffff', 0.9);
+  const manchas = [[0.4, 0.3, 1.3, 0.05], [2.1, -0.2, 1.1, 0.045], [3.6, 0.5, 0.9, 0.04], [4.9, -0.5, 1.2, 0.05], [1.2, -0.9, 0.8, 0.03], [5.6, 0.95, 0.7, 0.03]];
+  for (const [lon, lat, ancho, r] of manchas) {
+    const d = V(Math.cos(lat) * Math.cos(lon), Math.sin(lat), Math.cos(lat) * Math.sin(lon));
+    const m = malla(esfera(r, 10, 8), verde, d.clone().multiplyScalar(0.098).toArray());
+    m.scale.set(ancho, ancho * 0.8, ancho); m.lookAt(d.clone().multiplyScalar(2)); m.scale.z = 0.35; tierra.add(m);
+  }
+  for (const [lon, lat] of [[1, 0.6], [2.8, -0.4], [4.3, 0.2]]) {
+    const d = V(Math.cos(lat) * Math.cos(lon), Math.sin(lat), Math.cos(lat) * Math.sin(lon));
+    const c = malla(esfera(0.03, 10, 8), nube, d.clone().multiplyScalar(0.112).toArray()); c.lookAt(d.clone().multiplyScalar(2)); c.scale.set(1.6, 0.7, 0.3); tierra.add(c);
+  }
+  g.userData.animar = (t) => { tierra.rotation.y = t * 0.6; };
+  return g;
+}
+
+function herramientas() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.17, 0);
+  const rojo = mat('#c8312b', 0.45, 0.3), acero = mat('#b9bec7', 0.3, 0.9);
+  g.add(malla(caja(0.15, 0.11, 0.28, 0.012), rojo, [0, 0.055, 0]));
+  g.add(malla(caja(0.155, 0.02, 0.285, 0.006), mat('#8f1f1b', 0.5, 0.3), [0, 0.1, 0]));
+  g.add(malla(new THREE.TorusGeometry(0.045, 0.01, 6, 14, Math.PI), mat('#222', 0.6), [0, 0.11, 0], [0, Math.PI / 2, 0]));
+  // una llave inglesa y un destornillador asomados
+  const llave = new THREE.Group(); llave.position.set(0.02, 0.12, 0.08); llave.rotation.set(0.25, 0, -0.3); g.add(llave);
+  llave.add(malla(caja(0.018, 0.16, 0.01), acero, [0, 0.06, 0]));
+  llave.add(malla(new THREE.TorusGeometry(0.022, 0.009, 6, 12, Math.PI * 1.4), acero, [0, 0.15, 0], [0, 0, -0.7]));
+  const dest = new THREE.Group(); dest.position.set(-0.02, 0.11, -0.08); dest.rotation.set(-0.3, 0, 0.25); g.add(dest);
+  dest.add(malla(new THREE.CylinderGeometry(0.016, 0.016, 0.07, 10), mat('#f2c14e', 0.5), [0, 0.035, 0]));
+  dest.add(malla(new THREE.CylinderGeometry(0.005, 0.005, 0.09, 8), acero, [0, 0.11, 0]));
+  return g;
+}
+
+// Micrófono dorado de reguetonero, cerca del visor (para el que se lleva a Maluma).
+function microfono() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.42, 0.08); g.rotation.set(0.3, 0, 0.55);
+  const oro = mat('#e8b93a', 0.25, 0.9);
+  g.add(malla(new THREE.CylinderGeometry(0.018, 0.012, 0.16, 14), oro, [0, -0.06, 0]));
+  g.add(malla(new THREE.CylinderGeometry(0.024, 0.02, 0.025, 14), mat('#1a1a1a', 0.5), [0, 0.03, 0]));
+  g.add(malla(esfera(0.035, 14, 10), mat('#d9d9d9', 0.35, 0.9, { wireframe: true }), [0, 0.07, 0]));
+  g.add(malla(esfera(0.032, 14, 10), mat('#3a3a3a', 0.6), [0, 0.07, 0]));
+  const brillo = new THREE.MeshBasicMaterial({ color: '#ffd76a', transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  g.add(malla(esfera(0.06, 10, 8), brillo, [0, 0.07, 0]));
+  g.userData.animar = (t) => { brillo.opacity = 0.18 + 0.12 * Math.max(0, Math.sin(t * 4)); };
+  return g;
+}
+
+// Piano de cola entero… en las piernas, con el teclado hacia afuera (toca para el público).
+function piano() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.17, 0); g.rotation.y = Math.PI;
+  const negro = mat('#111114', 0.15, 0.4);
+  const forma = new THREE.Shape();
+  forma.moveTo(-0.13, -0.12); forma.lineTo(0.13, -0.12); forma.lineTo(0.13, 0.0);
+  forma.bezierCurveTo(0.13, 0.1, 0.04, 0.09, 0.02, 0.18); forma.bezierCurveTo(0.0, 0.26, -0.13, 0.25, -0.13, 0.14); forma.lineTo(-0.13, -0.12);
+  // la forma va en el plano del piso: x = ancho (a lo largo del teclado, eje z del pasajero), y = largo (hacia el pasajero)
+  const cuerpo = malla(new THREE.ExtrudeGeometry(forma, { depth: 0.07, bevelEnabled: true, bevelSize: 0.006, bevelThickness: 0.006, bevelSegments: 2 }), negro, [0, 0.12, 0], [Math.PI / 2, 0, -Math.PI / 2]);
+  g.add(cuerpo);
+  const interior = malla(new THREE.ShapeGeometry(forma), mat('#c99a3e', 0.4, 0.6), [0, 0.127, 0], [-Math.PI / 2, 0, -Math.PI / 2], [0.9, 0.9, 1]);
+  g.add(interior);
+  // teclado (en -x local: tras girar el grupo, queda mirando hacia afuera)
+  g.add(malla(caja(0.06, 0.022, 0.27, 0.004), mat('#f6f3ec', 0.4), [0.15, 0.1, 0]));
+  for (let k = 0; k < 10; k++) if (k % 7 !== 2 && k % 7 !== 6) g.add(malla(caja(0.034, 0.014, 0.012), negro, [0.145, 0.115, -0.115 + k * 0.026]));
+  g.add(malla(caja(0.02, 0.06, 0.28, 0.004), negro, [0.18, 0.1, 0])); // borde del teclado
+  for (const [x, z] of [[0.14, -0.11], [0.14, 0.11], [-0.12, 0.02]]) g.add(malla(new THREE.CylinderGeometry(0.01, 0.007, 0.08, 8), negro, [x, 0.04, z]));
+  return g;
+}
+
 const FABRICAS = {
   fuego, gato: () => animal(false), perro: () => animal(true), celular, audifonos, computador, carro, cama, corazon,
   libro, comida, planta, musica, balon: () => balon(), bucaros: () => balon('#f7d117', '#127a3a'), maleta,
+  mundo, herramientas, microfono, piano,
 };
 
 // Dónde va la llama cuando el objeto está prendido («computador+fuego», «balon+fuego»): encima del objeto.
