@@ -256,6 +256,26 @@ function microfono() {
   return g;
 }
 
+// Su tanque de oxígeno «de confianza» (aunque el traje ya trae aire): bala verde de hospital, manómetro y la manguera
+// conectada al casco. La aguja tiembla. Medidas para el casco en (0, 0.76, 0) tras escalar ×1,4 y subir 0,08.
+function oxigeno() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.2, 0.04);
+  const verde = mat('#2f9e5b', 0.45, 0.3), acero = mat('#c8ccd4', 0.3, 0.9);
+  g.add(malla(new THREE.CylinderGeometry(0.045, 0.045, 0.2, 22), verde, [0, 0.1, 0]));
+  g.add(malla(new THREE.SphereGeometry(0.045, 22, 10, 0, Math.PI * 2, 0, Math.PI / 2), verde, [0, 0.2, 0], [0, 0, 0], [1, 0.7, 1]));
+  g.add(malla(new THREE.CylinderGeometry(0.046, 0.046, 0.04, 22), mat('#f4f1ea', 0.6), [0, 0.11, 0]));   // etiqueta
+  g.add(malla(new THREE.CylinderGeometry(0.014, 0.018, 0.035, 12), acero, [0, 0.245, 0]));             // válvula
+  g.add(malla(new THREE.TorusGeometry(0.018, 0.005, 6, 14), acero, [0, 0.265, 0], [Math.PI / 2, 0, 0])); // perilla
+  const reloj = new THREE.Group(); reloj.position.set(0.028, 0.245, 0); reloj.rotation.z = -Math.PI / 2; g.add(reloj);
+  reloj.add(malla(new THREE.CylinderGeometry(0.022, 0.022, 0.012, 18), acero));
+  reloj.add(malla(new THREE.CylinderGeometry(0.018, 0.018, 0.002, 18), mat('#ffffff', 0.4), [0, 0.007, 0]));
+  const aguja = malla(caja(0.003, 0.002, 0.016), mat('#e8333a', 0.5), [0, 0.009, 0]); reloj.add(aguja);
+  const curva = new THREE.CatmullRomCurve3([V(0, 0.27, 0), V(-0.02, 0.33, -0.05), V(-0.08, 0.33, -0.06), V(-0.1, 0.29, -0.03)]);
+  g.add(malla(new THREE.TubeGeometry(curva, 20, 0.006, 6), mat('#e9eef2', 0.5, 0, { transparent: true, opacity: 0.85 })));
+  g.userData.animar = (t) => { aguja.rotation.y = 0.6 + Math.sin(t * 9) * 0.15 + Math.sin(t * 23) * 0.05; };
+  return g;
+}
+
 // Piano de cola entero… en las piernas, con el teclado hacia afuera (toca para el público).
 function piano() {
   const g = new THREE.Group(); g.position.set(0.3, 0.17, 0); g.rotation.y = Math.PI;
@@ -279,7 +299,7 @@ function piano() {
 const FABRICAS = {
   fuego, gato: () => animal(false), perro: () => animal(true), celular, audifonos, computador, carro, cama, corazon,
   libro, comida, planta, musica, balon: () => balon(), bucaros: () => balon('#f7d117', '#127a3a'), maleta,
-  mundo, herramientas, microfono, piano, lata, bajo: () => musica(true),
+  mundo, herramientas, microfono, piano, lata, bajo: () => musica(true), oxigeno,
 };
 
 // Dónde va la llama cuando el objeto está prendido («computador+fuego», «balon+fuego»): encima del objeto.
