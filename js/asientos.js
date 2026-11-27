@@ -86,6 +86,8 @@ export const OBJETOS = {
   mundo: 'El mundo entero', herramientas: 'Caja de herramientas', microfono: 'Micrófono dorado (cantantes)', piano: 'Piano de cola',
   oxigeno: 'Tanque de oxígeno (con manguera al casco)', zapatos: 'Par de tenis', labial: 'Tinta de labios',
   mordekaiser: 'Disfraz de Mordekaiser (League of Legends) con su maza', camara: 'Cámara de fotos', moto: 'Moto eléctrica',
+  gatos: 'Tres gatitos', gatofiesta: 'Gato de fiesta (gorro y confeti)', conejo: 'Conejito vainilla y cacao', fugglers: 'Dos Fugglers bailando',
+  estereoscopio: 'Estereoscopio antiguo', amiga: 'Amiga astronauta en miniatura (XD)', ramo: 'Ramo de rosas', cartel: 'Cartel «¡La traje!»',
 };
 // Dos claves con + (p. ej. «balon+fuego»): el objeto en llamas. La segunda solo puede ser fuego.
 export const OBJETO_VALIDO = /^[a-z]{1,20}(\+fuego)?$/;
@@ -96,6 +98,12 @@ export function adivinarObjeto(texto = '') {
   const t = texto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   const reglas = [
     ['fuego', /🔥|fuego|candela/u],
+    ['gatofiesta', /gat[oia].*(🥳|🎉|fiesta)|(🥳|🎉).*gat[oia]/u],
+    ['gatos', /gat[oia]s\b|michis/u],
+    ['conejo', /conej|🐰|🐇/u],
+    ['fugglers', /fuggler/u],
+    ['estereoscopio', /estereoscop|view-?master/u],
+    ['ramo', /ramo|rosas|💐/u],
     ['gato', /gat[oia]|michi|🐱|🐈/u],
     ['perro', /perr[oia]|mascota|lomito|🐕|🐶/u],
     ['camara', /camara|📸|📷/u],

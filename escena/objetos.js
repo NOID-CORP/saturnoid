@@ -53,9 +53,9 @@ function llamas(lugares) {
 const fuego = () => llamas([[0.27, 0.22, -0.2, 1.35], [0.27, 0.22, 0.2, 1.35]]);
 
 // Gato o perro sentado en las piernas, mirando hacia adelante.
-function animal(perro) {
+function animal(perro, colPelo = null, colClaro = null) {
   const g = new THREE.Group(); g.position.set(0.3, 0.2, 0);
-  const pelo = mat(perro ? '#b7834f' : '#e0913f', 0.85), claro = mat(perro ? '#f1e2c8' : '#f7ead6', 0.85), oscuro = mat('#1d1611', 0.4);
+  const pelo = mat(colPelo || (perro ? '#b7834f' : '#e0913f'), 0.85), claro = mat(colClaro || (perro ? '#f1e2c8' : '#f7ead6'), 0.85), oscuro = mat('#1d1611', 0.4);
   g.add(malla(esfera(0.1), pelo, [0, 0.08, 0], [0, 0, 0.3], [1.15, 1, 0.85]));       // cuerpo
   g.add(malla(esfera(0.07), claro, [0.06, 0.08, 0], [0, 0, 0], [0.6, 0.9, 0.7]));      // pecho
   g.add(malla(esfera(0.075), pelo, [0.07, 0.2, 0]));                                    // cabeza
@@ -460,7 +460,179 @@ function mordekaiser() {
   return g;
 }
 
+// Texto pintado en un lienzo (carteles, visores). Sin document (Node) no hay textura y la pieza va lisa.
+function textura(lineas, ancho, alto, { fondo = null, color = '#111', tam = 0.42 } = {}) {
+  if (typeof document === 'undefined') return null;
+  const c = document.createElement('canvas'); c.width = ancho; c.height = alto;
+  const x = c.getContext('2d');
+  if (fondo) { x.fillStyle = fondo; x.fillRect(0, 0, ancho, alto); }
+  x.fillStyle = color; x.textAlign = 'center'; x.textBaseline = 'middle';
+  const fs = Math.round(alto * tam / lineas.length * 1.6);
+  x.font = `900 ${fs}px "Arial Black", system-ui, sans-serif`;
+  lineas.forEach((l, i) => x.fillText(l, ancho / 2, alto * (i + 0.5) / lineas.length, ancho * 0.92));
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return t;
+}
+
+// «Mis gatos»: tres gatitos de colores distintos en fila sobre las piernas, cada uno mirando para su lado.
+function gatos() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.2, 0);
+  const colores = [['#2a2a30', '#f2f2f2'], ['#9a9aa2', '#e9e9ee'], ['#f0e6d6', '#ffffff']];
+  colores.forEach(([p, c], i) => {
+    const k = animal(false, p, c); k.scale.setScalar(0.62);
+    k.position.set(i === 1 ? 0.03 : 0, 0, (i - 1) * 0.13); k.rotation.y = (i - 1) * -0.45;
+    g.add(k);
+  });
+  const hijos = g.children.map((k) => k.userData.animar);
+  g.userData.animar = (t) => hijos.forEach((f, i) => f(t * (0.8 + i * 0.25) + i * 1.7));
+  return g;
+}
+
+// Yoko 🥳: gato esmoquin con gorro de fiesta y confeti que cae alrededor.
+function gatofiesta() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.2, 0);
+  const gato = animal(false, '#34343c', '#f4f4f4'); gato.position.set(0, 0, 0); g.add(gato);
+  for (const z of [-0.03, 0.03]) gato.add(malla(esfera(0.011, 8, 6), mat('#f2c230', 0.3, 0, { emissive: new THREE.Color('#5a4200') }), [0.137, 0.226, z]));
+  const gorro = new THREE.Group(); gorro.position.set(0.06, 0.27, 0); gorro.rotation.z = -0.25; gato.add(gorro);
+  gorro.add(malla(new THREE.ConeGeometry(0.04, 0.11, 18), mat('#7b3fe4', 0.5), [0, 0.055, 0]));
+  for (const [y, r, c] of [[0.025, 0.031, '#ffd23f'], [0.06, 0.02, '#ff4f8b']]) gorro.add(malla(new THREE.TorusGeometry(r, 0.006, 6, 18), mat(c, 0.5), [0, y, 0], [Math.PI / 2, 0, 0]));
+  gorro.add(malla(esfera(0.016, 10, 8), mat('#ffd23f', 0.6), [0, 0.115, 0]));
+  const colores = ['#ff4f8b', '#ffd23f', '#3fd0ff', '#7bff6a', '#ff8a3d'];
+  const papeles = [];
+  for (let i = 0; i < 14; i++) {
+    const p = malla(caja(0.014, 0.003, 0.009), new THREE.MeshBasicMaterial({ color: colores[i % 5], toneMapped: false }));
+    p.userData = { a: i * 2.4, r: 0.1 + (i % 4) * 0.035, v: 0.6 + (i % 3) * 0.25, f: i * 0.37 };
+    g.add(p); papeles.push(p);
+  }
+  g.userData.animar = (t) => {
+    gato.userData.animar(t);
+    gorro.rotation.x = Math.sin(t * 2.2) * 0.12;
+    for (const p of papeles) {
+      const { a, r, v, f } = p.userData;
+      const y = 0.55 - (((t * v * 0.25 + f) % 1) * 0.55);
+      p.position.set(Math.cos(a + t * 0.6) * r, y, Math.sin(a + t * 0.6) * r);
+      p.rotation.set(t * 5 + f * 9, t * 3 + a, t * 4);
+    }
+  };
+  return g;
+}
+
+// «Vainilla cacao»: conejito de dos colores, crema con orejas y manchas de chocolate. Mueve la nariz.
+function conejo() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.2, 0);
+  const vainilla = mat('#f6ead2', 0.9), cacao = mat('#6b3f24', 0.9), rosa = mat('#f39bb0', 0.6), oscuro = mat('#1d1611', 0.4);
+  g.add(malla(esfera(0.1), vainilla, [-0.01, 0.08, 0], [0, 0, 0], [1.1, 0.95, 1]));
+  g.add(malla(esfera(0.07, 14, 10), cacao, [-0.05, 0.12, 0.04], [0, 0, 0], [1, 0.7, 0.9]));     // mancha del lomo
+  g.add(malla(esfera(0.04, 10, 8), vainilla, [-0.11, 0.06, 0]));                               // cola
+  const cabeza = new THREE.Group(); cabeza.position.set(0.07, 0.2, 0); g.add(cabeza);
+  cabeza.add(malla(esfera(0.068), vainilla));
+  cabeza.add(malla(esfera(0.045, 12, 8), cacao, [0, 0.03, 0.035], [0, 0, 0], [1, 0.8, 0.6]));  // mancha del ojo
+  for (const z of [-0.03, 0.03]) cabeza.add(malla(esfera(0.011, 8, 6), oscuro, [0.055, 0.015, z]));
+  const nariz = malla(esfera(0.011, 8, 6), rosa, [0.07, -0.01, 0]); cabeza.add(nariz);
+  for (const z of [-0.022, 0.022]) {
+    const oreja = new THREE.Group(); oreja.position.set(-0.01, 0.05, z); oreja.rotation.set(z > 0 ? 0.18 : -0.18, 0, -0.15); cabeza.add(oreja);
+    oreja.add(malla(new THREE.CapsuleGeometry(0.018, 0.1, 4, 10), cacao, [0, 0.065, 0], [0, 0, 0], [1, 1, 0.55]));
+    oreja.add(malla(new THREE.CapsuleGeometry(0.01, 0.08, 4, 8), rosa, [0.008, 0.065, 0], [0, 0, 0], [1, 1, 0.5]));
+  }
+  g.userData.animar = (t) => { const b = Math.max(0, Math.sin(t * 14)) * (Math.sin(t * 1.3) > 0 ? 1 : 0); nariz.position.y = -0.01 + b * 0.004; cabeza.rotation.z = Math.sin(t * 0.9) * 0.08; };
+  return g;
+}
+
+// Fugglers: los muñecos peludos feos con dientes de persona. Dos, bailando (🕺).
+function fugglers() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.2, 0);
+  const lista = [];
+  for (const [z, color, ojoA, ojoB] of [[-0.085, '#7bbf3a', 0.024, 0.016], [0.085, '#9a62d6', 0.017, 0.026]]) {
+    const f = new THREE.Group(); f.position.z = z; g.add(f); lista.push(f);
+    const piel = mat(color, 0.95, 0, { flatShading: true });
+    f.add(malla(new THREE.IcosahedronGeometry(0.075, 1), piel, [0, 0.09, 0], [0.3, 0.7, 0.2], [0.95, 1.15, 0.9]));
+    for (let i = 0; i < 5; i++) f.add(malla(new THREE.ConeGeometry(0.012, 0.04, 4), piel, [-0.01 + (i % 2) * 0.015, 0.18, -0.03 + i * 0.015], [(i - 2) * 0.3, 0, (i % 2 ? 0.3 : -0.2)]));
+    const blanco = mat('#ffffff', 0.4), negro = mat('#111111', 0.3);
+    for (const [zz, r] of [[-0.025, ojoA], [0.025, ojoB]]) {
+      f.add(malla(esfera(r, 12, 8), blanco, [0.06, 0.125, zz]));
+      f.add(malla(esfera(r * 0.45, 8, 6), negro, [0.06 + r * 0.8, 0.125, zz]));
+    }
+    f.add(malla(caja(0.02, 0.03, 0.07, 0.008), mat('#3a0d14', 0.6), [0.065, 0.065, 0]));                 // boca
+    for (let i = 0; i < 6; i++) f.add(malla(caja(0.008, 0.013, 0.0095, 0.002), mat('#fffbe8', 0.3), [0.075, 0.073, -0.026 + i * 0.0105])); // dientes de arriba
+    for (let i = 0; i < 5; i++) f.add(malla(caja(0.008, 0.011, 0.0095, 0.002), mat('#fffbe8', 0.3), [0.075, 0.057, -0.021 + i * 0.0105])); // y de abajo
+  }
+  g.userData.animar = (t) => lista.forEach((f, i) => {
+    const s = t * 6 + i * Math.PI;
+    f.position.y = Math.abs(Math.sin(s)) * 0.03; f.rotation.z = Math.sin(s) * 0.15; f.rotation.y = Math.sin(t * 3 + i) * 0.35;
+  });
+  return g;
+}
+
+// Estereoscopio de madera (el de Holmes, 1861) pegado al visor, con su tarjeta de fotos dobles al frente.
+function estereoscopio() {
+  const g = new THREE.Group(); g.position.set(0.24, 0.68, 0);
+  const madera = mat('#6e4326', 0.55), laton = mat('#c9a24a', 0.3, 0.8), vidrio = mat('#9fc7d8', 0.1, 0.2, { transparent: true, opacity: 0.6 });
+  g.add(malla(caja(0.05, 0.05, 0.13, 0.012), madera, [0.02, 0, 0]));                               // capucha
+  g.add(malla(caja(0.006, 0.055, 0.14, 0.003), mat('#4a2c18', 0.6), [-0.006, 0, 0]));               // reborde negro
+  for (const z of [-0.03, 0.03]) {
+    g.add(malla(new THREE.CylinderGeometry(0.018, 0.018, 0.004, 18), vidrio, [-0.009, 0, z], [0, 0, Math.PI / 2]));
+    g.add(malla(new THREE.TorusGeometry(0.018, 0.003, 6, 18), laton, [-0.009, 0, z], [0, Math.PI / 2, 0]));
+  }
+  g.add(malla(new THREE.CylinderGeometry(0.006, 0.006, 0.2, 10), madera, [0.14, -0.018, 0], [0, 0, Math.PI / 2])); // vara
+  g.add(malla(new THREE.CylinderGeometry(0.009, 0.007, 0.09, 10), madera, [0.035, -0.07, 0]));       // mango
+  const tarjeta = new THREE.Group(); tarjeta.position.set(0.2, 0.0, 0); g.add(tarjeta);
+  tarjeta.add(malla(caja(0.012, 0.02, 0.02), laton, [0, -0.018, 0]));
+  tarjeta.add(malla(caja(0.003, 0.07, 0.14), mat('#efe3c4', 0.8), [0, 0.012, 0]));
+  for (const z of [-0.034, 0.034]) {
+    tarjeta.add(malla(caja(0.004, 0.05, 0.058), mat('#8a6a45', 0.7), [-0.001, 0.014, z]));
+    tarjeta.add(malla(esfera(0.012, 10, 8), mat('#e3a75a', 0.6), [-0.004, 0.022, z - 0.008], [0, 0, 0], [0.3, 1, 1])); // Saturnoid en sepia
+    tarjeta.add(malla(new THREE.TorusGeometry(0.018, 0.002, 4, 16), mat('#5b3c22', 0.6), [-0.004, 0.022, z - 0.008], [0.4, Math.PI / 2, 0], [1, 0.4, 1]));
+  }
+  g.userData.animar = (t) => { tarjeta.position.x = 0.2 + Math.sin(t * 0.7) * 0.012; };
+  return g;
+}
+
+// «Mi amiga XD»: una amiga astronauta en miniatura sentada en las piernas, saludando, con «XD» en el visor.
+function amiga() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.19, 0);
+  const traje = mat('#f7b6d2', 0.65), blanco = mat('#ffffff', 0.5);
+  g.add(malla(new THREE.CapsuleGeometry(0.045, 0.06, 6, 14), traje, [0, 0.08, 0]));
+  for (const z of [-0.025, 0.025]) g.add(malla(new THREE.CapsuleGeometry(0.018, 0.07, 4, 10), traje, [0.05, 0.03, z], [0, 0, Math.PI / 2]));
+  g.add(malla(new THREE.CapsuleGeometry(0.016, 0.06, 4, 10), traje, [0.01, 0.09, -0.055], [0.5, 0, 0]));   // brazo quieto
+  const brazo = new THREE.Group(); brazo.position.set(0, 0.12, 0.05); g.add(brazo);
+  brazo.add(malla(new THREE.CapsuleGeometry(0.016, 0.06, 4, 10), traje, [0, 0.04, 0]));
+  brazo.add(malla(esfera(0.02, 10, 8), blanco, [0, 0.085, 0]));
+  g.add(malla(esfera(0.065, 18, 14), blanco, [0, 0.19, 0]));                                       // casco
+  const tex = textura(['XD'], 128, 96, { fondo: '#1c2140', color: '#7ff3ff', tam: 0.6 });
+  const visor = malla(new THREE.SphereGeometry(0.058, 18, 12, -Math.PI * 0.35, Math.PI * 0.7, Math.PI * 0.3, Math.PI * 0.38),
+    tex ? new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }) : mat('#1c2140', 0.2, 0.4), [0.012, 0.19, 0], [0, Math.PI, 0]);
+  g.add(visor);
+  g.add(malla(new THREE.TorusGeometry(0.05, 0.009, 6, 18), mat('#e8b93a', 0.3, 0.8), [0, 0.13, 0], [Math.PI / 2, 0, 0]));
+  g.userData.animar = (t) => { brazo.rotation.x = -0.4 + Math.sin(t * 7) * 0.45; g.rotation.y = Math.sin(t * 1.1) * 0.1; };
+  return g;
+}
+
+// Ramo de rosas rojas envuelto en papel (para «la hermana de mi amigo»: va con intenciones).
+function ramo() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.22, 0.02); g.rotation.set(0.15, 0, -0.45);
+  const papel = mat('#f3d9c4', 0.8, 0, { side: THREE.DoubleSide });
+  g.add(malla(new THREE.ConeGeometry(0.075, 0.2, 14, 1, true), papel, [0, 0.03, 0], [Math.PI, 0, 0]));
+  g.add(malla(new THREE.TorusGeometry(0.025, 0.007, 6, 14), mat('#c8102e', 0.5), [0, -0.02, 0], [Math.PI / 2, 0, 0]));   // lazo
+  for (const [dx, dz] of [[0.02, 0.0], [-0.03, 0.01], [-0.02, -0.032], [0.002, 0.035], [0.024, -0.028], [-0.006, -0.002]]) g.add(malla(esfera(0.024, 12, 8), mat('#c40f2f', 0.55), [dx * 1.4, 0.14 + Math.abs(dx) * 0.4, dz * 1.4], [0.5, dx * 20, 0], [1, 0.85, 1]));
+  for (let i = 0; i < 5; i++) { const a = i * 1.26; g.add(malla(esfera(0.022, 8, 6), mat('#3f8a3a', 0.7), [Math.cos(a) * 0.05, 0.11, Math.sin(a) * 0.05], [0, -a, 0.9], [1.4, 0.3, 0.7])); }
+  g.add(malla(caja(0.003, 0.03, 0.04), mat('#ffffff', 0.6), [0.06, 0.02, 0.03], [0, 0, 0.2]));                         // tarjetica
+  return g;
+}
+
+// «Llevo a @alguien» cuando ese alguien también comentó (ya va a bordo): cartel «¡LA TRAJE!» en un palito.
+function cartel() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.2, 0.08); g.rotation.x = -0.1;
+  g.add(malla(new THREE.CylinderGeometry(0.007, 0.007, 0.36, 8), mat('#c9955a', 0.7), [0, 0.15, 0]));
+  const tex = textura(['¡LA TRAJE!', '★ ★ ★'], 512, 256, { fondo: '#ffd23f', color: '#1a1a1a', tam: 0.5 });
+  const tabla = new THREE.Group(); tabla.position.set(0.006, 0.38, 0); g.add(tabla);
+  tabla.add(malla(caja(0.008, 0.13, 0.25, 0.004), mat('#ffd23f', 0.6)));
+  if (tex) for (const [x, ry] of [[0.0045, Math.PI / 2], [-0.0045, -Math.PI / 2]]) tabla.add(malla(new THREE.PlaneGeometry(0.24, 0.12), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }), [x, 0, 0], [0, ry, 0]));
+  g.userData.animar = (t) => { g.rotation.x = -0.1 + Math.sin(t * 3.2) * 0.12; };
+  return g;
+}
+
 const FABRICAS = {
+  gatos, gatofiesta, conejo, fugglers, estereoscopio, amiga, ramo, cartel,
   mordekaiser, camara, moto,
   fuego, gato: () => animal(false), perro: () => animal(true), celular, audifonos, computador, carro, cama, corazon,
   libro, comida, planta, musica, balon: () => balon(), bucaros: () => balon('#f7d117', '#127a3a'), maleta,
