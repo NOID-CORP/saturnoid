@@ -91,7 +91,7 @@ export const OBJETOS = {
   gatocaja: 'Gatito en una caja', gatoelegante: 'Gato elegante (sombrero de copa y monóculo)', audifonostristes: 'Audífonos azules con nube de lluvia',
   airpods: 'AirPods gigantes y su estuche', parlante: 'Grabadora de parlantes', nevera: 'Nevera de paseo con bebidas', selfie: 'Celular en palo de selfie',
   computadorcohete: 'Portátil montado en un cohete', pizza: 'Caja de pizza abierta', pcgamer: 'Torre de PC gamer con RGB', neutrones: 'Estrella de neutrones (púlsar)',
-  hola: 'Globo de diálogo «¡HOLA!»', dominadas: 'Balón haciendo dominadas', guitarra: 'Guitarra acústica con notas',
+  hola: 'Globo de diálogo «¡HOLA!»', donandres: 'Don Andrés en miniatura con chullo y bandera del Perú', dominadas: 'Balón haciendo dominadas', guitarra: 'Guitarra acústica con notas',
   estereoscopio: 'Estereoscopio antiguo', amiga: 'Amiga astronauta en miniatura (XD)', ramo: 'Ramo de rosas', cartel: 'Cartel «¡La traje!»',
 };
 // Dos claves con + (p. ej. «balon+fuego»): el objeto en llamas. La segunda solo puede ser fuego.
@@ -109,6 +109,7 @@ export function adivinarObjeto(texto = '') {
     ['fugglers', /fuggler/u],
     ['estereoscopio', /estereoscop|view-?master/u],
     ['ramo', /ramo|rosas|💐/u],
+    ['donandres', /don andres/u],
     ['gato', /gat[oia]|michi|🐱|🐈/u],
     ['perro', /perr[oia]|mascota|lomito|🐕|🐶/u],
     ['camara', /camara|📸|📷/u],

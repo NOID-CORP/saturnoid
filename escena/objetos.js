@@ -951,8 +951,50 @@ function guitarra() {
   return g;
 }
 
+// «Llevo a don andrés 🇵🇪» (@donandress._ ya va a bordo): Don Andrés en miniatura, con chullo, poncho rojo, bigote
+// canoso y agitando la bandera del Perú.
+function donandres() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.19, 0);
+  const piel = mat('#c98b5e', 0.7), rojo = mat('#d91023', 0.65), blanco = mat('#ffffff', 0.6), canas = mat('#f2f0ea', 0.85), negro = mat('#1a1a1a', 0.5);
+  g.add(malla(new THREE.ConeGeometry(0.07, 0.13, 18), rojo, [0, 0.07, 0]));                                 // poncho
+  for (const y of [0.035, 0.075]) { const r = 0.07 * (0.135 - y) / 0.13 + 0.002; g.add(malla(new THREE.CylinderGeometry(r - 0.004, r + 0.002, 0.01, 18), blanco, [0, y, 0])); }
+  for (const z of [-0.022, 0.022]) g.add(malla(esfera(0.016, 10, 8), negro, [0.025, 0.006, z], [0, 0, 0], [1.4, 0.7, 1]));   // botas
+  g.add(malla(esfera(0.042, 18, 14), piel, [0, 0.17, 0]));                                                   // cabeza
+  g.add(malla(esfera(0.012, 10, 8), piel, [0.042, 0.168, 0]));                                               // nariz
+  for (const z of [-0.015, 0.015]) {
+    g.add(malla(esfera(0.006, 8, 6), negro, [0.036, 0.182, z]));                                             // ojos
+    g.add(malla(caja(0.006, 0.006, 0.018), canas, [0.039, 0.194, z * 1.1], [z > 0 ? -0.25 : 0.25, 0, 0]));   // cejas
+    g.add(malla(new THREE.CapsuleGeometry(0.008, 0.024, 4, 8), canas, [0.04, 0.152, z * 1.15], [z > 0 ? 1.15 : -1.15, 0, 0]));   // bigote
+  }
+  // chullo: gorro andino con franjas, pompón y orejeras con cordón
+  g.add(malla(new THREE.SphereGeometry(0.046, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), rojo, [0, 0.18, 0]));
+  g.add(malla(new THREE.ConeGeometry(0.03, 0.05, 14), rojo, [0, 0.243, 0]));
+  g.add(malla(new THREE.CylinderGeometry(0.047, 0.047, 0.012, 18), blanco, [0, 0.19, 0]));
+  g.add(malla(new THREE.CylinderGeometry(0.038, 0.04, 0.008, 18), mat('#ffd23f', 0.6), [0, 0.212, 0]));
+  g.add(malla(esfera(0.014, 10, 8), mat('#ffd23f', 0.8), [0, 0.272, 0]));
+  for (const z of [-0.044, 0.044]) {
+    g.add(malla(caja(0.03, 0.04, 0.008, 0.003), rojo, [-0.004, 0.16, z]));
+    g.add(malla(new THREE.CylinderGeometry(0.002, 0.002, 0.04, 5), blanco, [-0.004, 0.12, z]));
+    g.add(malla(esfera(0.007, 8, 6), blanco, [-0.004, 0.1, z]));
+  }
+  g.add(malla(new THREE.CapsuleGeometry(0.014, 0.05, 4, 10), rojo, [0.03, 0.09, -0.05], [0.6, 0, 0.5]));    // brazo quieto
+  // brazo que agita la bandera roja-blanca-roja
+  const brazo = new THREE.Group(); brazo.position.set(0.01, 0.11, 0.055); g.add(brazo);
+  brazo.add(malla(new THREE.CapsuleGeometry(0.014, 0.05, 4, 10), rojo, [0, 0.035, 0]));
+  brazo.add(malla(esfera(0.015, 10, 8), piel, [0, 0.075, 0]));
+  brazo.add(palo(V(0, 0.06, 0), V(0, 0.27, 0), 0.0035, mat('#c9955a', 0.7)));
+  const bandera = new THREE.Group(); bandera.position.set(0, 0.235, 0); brazo.add(bandera);
+  [rojo, blanco, rojo].forEach((m, i) => bandera.add(malla(caja(0.003, 0.065, 0.034), m, [0, 0, 0.019 + i * 0.034])));
+  g.userData.animar = (t) => {
+    brazo.rotation.x = -0.25 + Math.sin(t * 5) * 0.35;
+    bandera.rotation.y = Math.sin(t * 9) * 0.35;
+    g.rotation.y = Math.sin(t * 1.2) * 0.08;
+  };
+  return g;
+}
+
 const FABRICAS = {
-  perroastronauta, perrita, perrolanudo, gatocaja, gatoelegante, audifonostristes, airpods, parlante, nevera, selfie,
+  donandres, perroastronauta, perrita, perrolanudo, gatocaja, gatoelegante, audifonostristes, airpods, parlante, nevera, selfie,
   computadorcohete, pizza, pcgamer, neutrones, hola, dominadas, guitarra,
   gatos, gatofiesta, conejo, fugglers, estereoscopio, amiga, ramo, cartel,
   mordekaiser, camara, moto,
