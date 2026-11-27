@@ -83,10 +83,10 @@ function celular() {
 }
 
 // Audífonos de diadema puestos sobre el casco.
-function audifonos() {
+function audifonos(tono = '#ff6a3d') {
   const g = new THREE.Group(); g.position.set(0, 0.76, 0);
   // de color (naranja NOID): negros se perdían contra el visor oscuro
-  const color = mat('#ff6a3d', 0.4, 0.1), cojin = mat('#1c1c22', 0.7);
+  const color = mat(tono, 0.4, 0.1), cojin = mat('#1c1c22', 0.7);
   g.add(malla(new THREE.TorusGeometry(0.19, 0.022, 8, 28, Math.PI), color, [0, 0, 0], [0, Math.PI / 2, 0], [1, 1.08, 1]));
   for (const z of [-0.19, 0.19]) {
     g.add(malla(new THREE.CylinderGeometry(0.075, 0.075, 0.06, 20), color, [0, -0.02, z + Math.sign(z) * 0.012], [Math.PI / 2, 0, 0]));
@@ -631,7 +631,329 @@ function cartel() {
   return g;
 }
 
+// ── Variantes (27-nov, pedido de DON: «no repetir las formas»): cada pasajero con algo que nadie más tenga ──
+
+// Un palo entre dos puntos (palo de selfie, antenas, hilos de queso).
+function palo(a, b, r, m, lados = 8) {
+  const d = new THREE.Vector3().subVectors(b, a);
+  const o = malla(new THREE.CylinderGeometry(r, r, d.length(), lados), m);
+  o.position.copy(a).addScaledVector(d, 0.5);
+  o.quaternion.setFromUnitVectors(V(0, 1, 0), d.clone().normalize());
+  return o;
+}
+
+// Corazón en relieve, de tamaño k (1 = el del «corazón»).
+function corazonGeo(k = 1) {
+  const s = new THREE.Shape();
+  s.moveTo(0, -0.07 * k); s.bezierCurveTo(0.09 * k, 0, 0.07 * k, 0.07 * k, 0.035 * k, 0.07 * k); s.bezierCurveTo(0.012 * k, 0.07 * k, 0, 0.05 * k, 0, 0.04 * k);
+  s.bezierCurveTo(0, 0.05 * k, -0.012 * k, 0.07 * k, -0.035 * k, 0.07 * k); s.bezierCurveTo(-0.07 * k, 0.07 * k, -0.09 * k, 0, 0, -0.07 * k);
+  const geo = new THREE.ExtrudeGeometry(s, { depth: 0.03 * k, bevelEnabled: true, bevelSize: 0.01 * k, bevelThickness: 0.01 * k, bevelSegments: 2, curveSegments: 8 });
+  geo.center(); return geo;
+}
+
+// Rockita 👩🏽‍🚀🐶: perrita blanca y negra con su propio casco de astronauta (burbuja, aro dorado y antena que titila).
+function perroastronauta() {
+  const g = animal(true, '#2e2a27', '#f3efe8');
+  g.add(malla(esfera(0.11, 22, 16), mat('#cfe8ff', 0.05, 0.1, { transparent: true, opacity: 0.22, depthWrite: false }), [0.085, 0.2, 0]));
+  g.add(malla(new THREE.TorusGeometry(0.075, 0.012, 8, 24), mat('#e8b93a', 0.3, 0.8), [0.075, 0.115, 0], [Math.PI / 2, 0, 0]));
+  g.add(malla(new THREE.CylinderGeometry(0.003, 0.003, 0.06, 6), mat('#c8ccd4', 0.3, 0.9), [0.07, 0.335, 0]));
+  const luz = malla(esfera(0.012, 8, 6), new THREE.MeshBasicMaterial({ color: '#ff3b3b', toneMapped: false }), [0.07, 0.37, 0]); g.add(luz);
+  const cola = g.userData.animar;
+  g.userData.animar = (t) => { cola(t); luz.visible = (t * 1.5) % 1 < 0.55; };
+  return g;
+}
+
+// «Mi perrita ❤️»: salchicha larguísima con moño rosado y un corazón que le late encima.
+function perrita() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.2, 0);
+  const pelo = mat('#8a4b25', 0.8), claro = mat('#c98a55', 0.8), oscuro = mat('#1d1611', 0.4), rosa = mat('#ff7eb6', 0.5);
+  g.add(malla(new THREE.CapsuleGeometry(0.045, 0.17, 6, 14), pelo, [0, 0.08, 0], [0, 0, Math.PI / 2]));
+  for (const [x, z] of [[0.08, 0.028], [0.08, -0.028], [-0.08, 0.028], [-0.08, -0.028]]) g.add(malla(new THREE.CylinderGeometry(0.014, 0.012, 0.05, 8), pelo, [x, 0.03, z]));
+  g.add(malla(esfera(0.055), pelo, [0.14, 0.15, 0]));
+  g.add(malla(esfera(0.03, 12, 8), claro, [0.19, 0.14, 0], [0, 0, 0], [1.6, 0.8, 0.9]));
+  g.add(malla(esfera(0.012, 8, 6), oscuro, [0.237, 0.147, 0]));
+  for (const z of [-0.025, 0.025]) g.add(malla(esfera(0.01, 8, 6), oscuro, [0.18, 0.17, z]));
+  for (const z of [-0.05, 0.05]) g.add(malla(esfera(0.03, 10, 8), mat('#5e3017', 0.8), [0.13, 0.13, z], [z > 0 ? -0.3 : 0.3, 0, 0], [0.6, 1.4, 0.3]));
+  const cola = palo(V(-0.12, 0.1, 0), V(-0.19, 0.16, 0), 0.008, pelo); const colaG = new THREE.Group(); colaG.position.set(-0.12, 0.1, 0); cola.position.sub(colaG.position); colaG.add(cola); g.add(colaG);
+  for (const z of [-0.025, 0.025]) g.add(malla(esfera(0.022, 10, 8), rosa, [0.13, 0.205, 0.03 + z], [0, 0, 0], [0.6, 0.8, 1.1]));
+  g.add(malla(esfera(0.012, 8, 6), rosa, [0.13, 0.205, 0.03]));
+  const cor = malla(corazonGeo(0.6), mat('#e8344e', 0.35, 0.1, { emissive: new THREE.Color('#7a0d1e'), emissiveIntensity: 0.6 }), [0.15, 0.31, 0], [0, Math.PI / 2, 0]); g.add(cor);
+  g.userData.animar = (t) => {
+    colaG.rotation.y = Math.sin(t * 12) * 0.6;
+    cor.scale.setScalar(1 + 0.15 * Math.max(0, Math.sin(t * 5)) ** 4); cor.position.y = 0.31 + 0.012 * Math.sin(t * 1.7);
+  };
+  return g;
+}
+
+// Naia: poodle color albaricoque, todo motas de pelo crespo (pompones), que ladea la cabeza.
+function perrolanudo() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.2, 0);
+  const rizo = mat('#e3b48c', 0.95, 0, { flatShading: true }), oscuro = mat('#1d1611', 0.4);
+  const mota = (r, p, e = [1, 1, 1]) => malla(new THREE.IcosahedronGeometry(r, 1), rizo, p, [0.3, 0.5, 0.2], e);
+  g.add(mota(0.075, [-0.01, 0.09, 0], [1.2, 1, 0.9]), mota(0.06, [0.06, 0.1, 0]));
+  for (const [x, z] of [[0.07, 0.035], [0.07, -0.035], [-0.07, 0.035], [-0.07, -0.035]]) { g.add(malla(new THREE.CylinderGeometry(0.01, 0.01, 0.05, 6), rizo, [x, 0.03, z])); g.add(mota(0.02, [x, 0.012, z])); }
+  g.add(mota(0.028, [-0.1, 0.16, 0]));
+  const cab = new THREE.Group(); cab.position.set(0.1, 0.2, 0); g.add(cab);
+  cab.add(mota(0.05, [0, 0, 0]), mota(0.04, [-0.01, 0.055, 0]));
+  for (const z of [-0.05, 0.05]) cab.add(mota(0.03, [-0.01, -0.03, z], [0.8, 1.5, 0.7]));
+  cab.add(malla(esfera(0.022, 10, 8), rizo, [0.05, -0.01, 0], [0, 0, 0], [1.4, 0.8, 0.9]));
+  cab.add(malla(esfera(0.009, 8, 6), oscuro, [0.08, -0.005, 0]));
+  for (const z of [-0.02, 0.02]) cab.add(malla(esfera(0.008, 8, 6), oscuro, [0.045, 0.015, z]));
+  g.userData.animar = (t) => { cab.rotation.x = Math.sin(t * 0.8) * 0.25; };
+  return g;
+}
+
+// «Un gatico»: gatito gris que se asoma y se esconde en una caja de cartón.
+function gatocaja() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.2, 0);
+  const carton = mat('#b98a52', 0.9), gris = mat('#9c9ca4', 0.85), blanco = mat('#ffffff', 0.4), negro = mat('#111', 0.3);
+  g.add(malla(caja(0.2, 0.01, 0.2), carton, [0, 0.005, 0]));
+  for (const [p, d] of [[[0.1, 0.065, 0], [0.01, 0.13, 0.2]], [[-0.1, 0.065, 0], [0.01, 0.13, 0.2]], [[0, 0.065, 0.1], [0.2, 0.13, 0.01]], [[0, 0.065, -0.1], [0.2, 0.13, 0.01]]]) g.add(malla(caja(...d), carton, p));
+  for (const [x, z, rz, rx] of [[0.14, 0, -0.6, 0], [-0.14, 0, 0.6, 0], [0, 0.14, 0, 0.6], [0, -0.14, 0, -0.6]]) g.add(malla(caja(x ? 0.09 : 0.2, 0.008, z ? 0.09 : 0.2), carton, [x * 0.95, 0.14, z * 0.95], [rx, 0, rz]));
+  const gato = new THREE.Group(); g.add(gato);
+  gato.add(malla(esfera(0.055), gris, [0.02, 0, 0]));
+  for (const z of [-0.03, 0.03]) {
+    gato.add(malla(new THREE.ConeGeometry(0.02, 0.045, 4), gris, [0.01, 0.055, z], [z > 0 ? 0.25 : -0.25, 0, 0]));
+    gato.add(malla(esfera(0.016, 10, 8), blanco, [0.065, 0.01, z * 0.8]));
+    gato.add(malla(esfera(0.009, 8, 6), negro, [0.078, 0.01, z * 0.8]));
+  }
+  for (const z of [-0.03, 0.03]) g.add(malla(esfera(0.018, 8, 6), gris, [0.1, 0.13, z], [0, 0, 0], [1.2, 0.7, 1]));
+  g.userData.animar = (t) => { const k = Math.min(1, Math.max(0, Math.sin(t * 0.9) * 2 + 0.6)); gato.position.y = 0.08 + k * 0.07; };
+  return g;
+}
+
+// El gato Fernando: con ese nombre, va de sombrero de copa, monóculo y corbatín.
+function gatoelegante() {
+  const g = animal(false, '#6b6f78', '#eef0f3');
+  const negro = mat('#151518', 0.4), oro = mat('#e8b93a', 0.25, 0.9);
+  const sombrero = new THREE.Group(); sombrero.position.set(0.06, 0.27, 0); sombrero.rotation.z = -0.12; g.add(sombrero);
+  sombrero.add(malla(new THREE.CylinderGeometry(0.062, 0.062, 0.006, 20), negro, [0, 0.003, 0]));
+  sombrero.add(malla(new THREE.CylinderGeometry(0.04, 0.042, 0.075, 20), negro, [0, 0.04, 0]));
+  sombrero.add(malla(new THREE.CylinderGeometry(0.0425, 0.0425, 0.014, 20), mat('#b3202a', 0.5), [0, 0.012, 0]));
+  g.add(malla(new THREE.TorusGeometry(0.017, 0.003, 6, 18), oro, [0.143, 0.225, 0.03], [0, Math.PI / 2, 0]));
+  g.add(palo(V(0.143, 0.208, 0.03), V(0.12, 0.15, 0.05), 0.0012, oro, 4));
+  for (const z of [-1, 1]) g.add(malla(new THREE.ConeGeometry(0.018, 0.03, 4), mat('#b3202a', 0.5), [0.115, 0.13, z * 0.016], [z * Math.PI / 2, 0, 0]));
+  g.add(malla(esfera(0.009, 8, 6), mat('#b3202a', 0.5), [0.117, 0.13, 0]));
+  return g;
+}
+
+// «Mis audífonos 😢»: audífonos azules y una nube de lluvia sobre el casco.
+function audifonostristes() {
+  const g = audifonos('#3d7bff');
+  const nube = new THREE.Group(); nube.position.set(0, 0.36, 0); g.add(nube);
+  const gris = mat('#8d95a3', 0.9);
+  for (const [x, y, z, r] of [[0, 0, 0, 0.075], [0.02, 0.02, 0.08, 0.06], [-0.01, 0.01, -0.08, 0.06], [-0.04, 0.04, 0.02, 0.055]]) nube.add(malla(esfera(r, 14, 10), gris, [x, y, z]));
+  const gotas = [];
+  const agua = new THREE.MeshBasicMaterial({ color: '#6fb6ff', transparent: true, opacity: 0.85, toneMapped: false });
+  for (let i = 0; i < 7; i++) { const d = malla(new THREE.CapsuleGeometry(0.005, 0.018, 3, 6), agua); d.userData = { x: (i % 3 - 1) * 0.035, z: -0.09 + i * 0.03, f: i * 0.31 }; nube.add(d); gotas.push(d); }
+  g.userData.animar = (t) => {
+    nube.position.y = 0.36 + Math.sin(t * 1.2) * 0.01;
+    for (const d of gotas) { const k = (t * 1.6 + d.userData.f) % 1; d.position.set(d.userData.x, -0.05 - k * 0.16, d.userData.z); }
+  };
+  return g;
+}
+
+// «Los AirPods»: dos AirPods gigantes en el casco y el estuche abierto en las manos (va sin escalar: medidas reales del pasajero).
+function airpods() {
+  const g = new THREE.Group();
+  const blanco = mat('#fbfbfb', 0.3, 0.05);
+  for (const z of [-1, 1]) {
+    g.add(malla(esfera(0.05, 16, 12), blanco, [0.03, 0.76, z * 0.19]));
+    g.add(malla(new THREE.CapsuleGeometry(0.017, 0.1, 4, 10), blanco, [0.05, 0.67, z * 0.195], [0, 0, 0.18]));
+    g.add(malla(esfera(0.02, 10, 8), mat('#2a2a30', 0.4), [0.06, 0.76, z * 0.215]));
+  }
+  const est = new THREE.Group(); est.position.set(0.36, 0.46, 0.04); est.rotation.z = 0.25; g.add(est);
+  est.add(malla(caja(0.1, 0.1, 0.14, 0.03), blanco, [0, 0, 0]));
+  est.add(malla(caja(0.006, 0.07, 0.1), mat('#2a2a30', 0.5), [0.0, 0.051, 0]));  // la ranura de los AirPods
+  const tapa = new THREE.Group(); tapa.position.set(-0.05, 0.05, 0); est.add(tapa);
+  tapa.add(malla(caja(0.1, 0.03, 0.14, 0.014), blanco, [0.05, 0.015, 0]));
+  est.add(malla(esfera(0.007, 8, 6), new THREE.MeshBasicMaterial({ color: '#3cff7a', toneMapped: false }), [0.051, 0.0, 0]));
+  est.add(malla(esfera(0.025, 8, 6), new THREE.MeshBasicMaterial({ color: '#3cff7a', transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }), [0.051, 0.0, 0]));
+  g.userData.animar = (t) => { tapa.rotation.z = 0.9 + Math.sin(t * 1.4) * 0.35; };
+  return g;
+}
+
+// «Audífonos, celular y música 🔥»: una grabadora de parlantes que laten al ritmo.
+function parlante() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.2, 0);
+  const cuerpo = mat('#2b2d33', 0.45, 0.3), negro = mat('#0e0e10', 0.7), alu = mat('#c8ccd4', 0.3, 0.8);
+  g.add(malla(caja(0.11, 0.13, 0.32, 0.02), cuerpo, [0, 0.065, 0]));
+  const conos = [];
+  for (const z of [-0.09, 0.09]) {
+    g.add(malla(new THREE.TorusGeometry(0.048, 0.006, 6, 24), alu, [0.056, 0.065, z], [0, Math.PI / 2, 0]));
+    const c = new THREE.Group(); c.position.set(0.056, 0.065, z); g.add(c); conos.push(c);
+    c.add(malla(new THREE.ConeGeometry(0.045, 0.02, 24, 1, true), negro, [0, 0, 0], [0, 0, Math.PI / 2]));
+    c.add(malla(esfera(0.014, 10, 8), alu, [0.006, 0, 0]));
+  }
+  g.add(malla(new THREE.PlaneGeometry(0.06, 0.03), new THREE.MeshBasicMaterial({ color: '#3fe3ff', toneMapped: false }), [0.0565, 0.09, 0], [0, Math.PI / 2, 0]));
+  g.add(malla(new THREE.TorusGeometry(0.06, 0.008, 6, 16, Math.PI), alu, [0, 0.13, 0], [0, Math.PI / 2, 0]));
+  g.add(palo(V(-0.03, 0.13, -0.14), V(-0.07, 0.3, -0.18), 0.003, alu, 6));
+  g.userData.animar = (t) => { const b = 1 + 0.18 * Math.max(0, Math.sin(t * 13)) ** 6; conos.forEach((c) => c.scale.set(b, b, b)); };
+  return g;
+}
+
+// «Una nechera»: nevera de paseo con hielo, botellas y latas (con 🔥: la nevera en llamas).
+function nevera() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.2, 0);
+  const rojo = mat('#d8342c', 0.5), blanco = mat('#f4f4f0', 0.6);
+  g.add(malla(caja(0.16, 0.12, 0.24, 0.015), rojo, [0, 0.06, 0]));
+  g.add(malla(caja(0.165, 0.02, 0.245, 0.008), blanco, [0, 0.11, 0]));
+  const tapa = new THREE.Group(); tapa.position.set(-0.08, 0.125, 0); tapa.rotation.z = 1.3; g.add(tapa);
+  tapa.add(malla(caja(0.16, 0.025, 0.24, 0.01), blanco, [0.08, 0, 0]));
+  const hielo = mat('#dff3ff', 0.1, 0, { transparent: true, opacity: 0.8 });
+  for (let i = 0; i < 9; i++) g.add(malla(caja(0.03, 0.03, 0.03, 0.006), hielo, [-0.05 + (i % 3) * 0.05, 0.118 + (i % 2) * 0.01, -0.08 + Math.floor(i / 3) * 0.08], [i, i * 2, 0]));
+  for (const [z, c] of [[-0.06, '#2f8a4a'], [0.02, '#7a3e12'], [0.07, '#dfe8e0']]) {
+    g.add(malla(new THREE.CylinderGeometry(0.018, 0.018, 0.1, 12), mat(c, 0.15, 0.1, { transparent: true, opacity: 0.85 }), [0.02, 0.14, z], [0.15, 0, -0.1]));
+    g.add(malla(new THREE.CylinderGeometry(0.007, 0.012, 0.04, 10), mat(c, 0.15, 0.1), [0.024, 0.205, z], [0.15, 0, -0.1]));
+  }
+  g.add(malla(new THREE.CylinderGeometry(0.016, 0.016, 0.06, 14), mat('#ffd23f', 0.3, 0.7), [-0.04, 0.14, 0.05]));
+  return g;
+}
+
+// «Mi celular»: en un palo de selfie, mirándose, con el flash que salta cada tanto.
+function selfie() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.2, 0.1);
+  const negro = mat('#202227', 0.4, 0.4);
+  const fin = V(0.15, 0.36, -0.22);   // al lado de la cara, como se toma una selfie
+  g.add(palo(V(0, 0, 0), fin, 0.006, mat('#9aa0a8', 0.3, 0.8)));
+  g.add(malla(new THREE.CylinderGeometry(0.012, 0.012, 0.06, 10), negro, [0.02, 0.03, -0.007], [0, 0, -0.55]));
+  const tel = new THREE.Group(); tel.position.copy(fin); g.add(tel);
+  // la pantalla (+z) mira al casco: (0, 0.76, 0) del pasajero, pasado a este marco (escala ×1,4, +0,08)
+  tel.quaternion.setFromUnitVectors(V(0, 0, 1), V(-0.214, 0.343, -0.071).sub(fin).normalize());
+  tel.add(malla(caja(0.085, 0.17, 0.012, 0.008), negro));
+  const pantalla = new THREE.MeshBasicMaterial({ color: '#ffd6e8', toneMapped: false });
+  tel.add(malla(new THREE.PlaneGeometry(0.075, 0.155), pantalla, [0, 0, 0.0065]));
+  const flash = malla(esfera(0.01, 8, 6), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }), [0, 0.07, 0.01]);
+  tel.add(flash);
+  g.userData.animar = (t) => { const k = (t * 0.5) % 1; flash.material.opacity = k < 0.06 ? 1 : 0; flash.scale.setScalar(k < 0.06 ? 4 : 1); };
+  return g;
+}
+
+// «Celular y computador 🚀»: el portátil va montado en un cohete, como en una tabla de surf.
+function computadorcohete() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.22, 0);
+  const blanco = mat('#f2f2f4', 0.4, 0.2), rojo = mat('#e2412f', 0.5), alu = mat('#c9ccd3', 0.35, 0.7);
+  const nave = new THREE.Group(); g.add(nave);
+  nave.add(malla(new THREE.CylinderGeometry(0.04, 0.04, 0.22, 18), blanco, [0, 0.04, 0], [0, 0, -Math.PI / 2]));
+  nave.add(malla(new THREE.ConeGeometry(0.04, 0.07, 18), rojo, [0.145, 0.04, 0], [0, 0, -Math.PI / 2]));
+  for (let i = 0; i < 3; i++) { const a = i * Math.PI * 2 / 3; nave.add(malla(caja(0.05, 0.004, 0.035), rojo, [-0.09, 0.04 + Math.sin(a) * 0.05, Math.cos(a) * 0.05], [a, 0, 0])); }
+  nave.add(malla(esfera(0.016, 10, 8), mat('#7fd0ff', 0.1, 0.3), [0.06, 0.07, 0.026]));
+  const fuegoM = (c, o) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  const chorro = new THREE.Group(); chorro.position.set(-0.115, 0.04, 0); chorro.rotation.z = Math.PI / 2; nave.add(chorro);
+  chorro.add(malla(gota(0.14, 0.035), fuegoM('#ff8a1f', 0.9)), malla(gota(0.08, 0.02), fuegoM('#fff1b0', 1)));
+  nave.add(malla(caja(0.12, 0.008, 0.16, 0.004), alu, [0, 0.087, 0]));
+  const tapa = new THREE.Group(); tapa.position.set(0.06, 0.091, 0); tapa.rotation.z = 1.85; nave.add(tapa);
+  tapa.add(malla(caja(0.12, 0.006, 0.16, 0.004), alu, [-0.06, 0, 0]));
+  tapa.add(malla(new THREE.PlaneGeometry(0.11, 0.15), new THREE.MeshBasicMaterial({ color: '#9fd0ff', toneMapped: false }), [-0.06, -0.004, 0], [Math.PI / 2, 0, 0]));
+  g.userData.animar = (t) => { nave.position.y = 0.02 * Math.sin(t * 2.4); nave.rotation.x = Math.sin(t * 1.7) * 0.06; chorro.scale.set(1, 1 + 0.25 * Math.sin(t * 23), 1); };
+  return g;
+}
+
+// «Llevo comida» (la otra comida): caja de pizza abierta y una tajada que se levanta estirando el queso.
+function pizza() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.19, 0);
+  const carton = mat('#c9a06a', 0.9), queso = mat('#f3c64b', 0.6), borde = mat('#d18b3c', 0.7), peperoni = mat('#b8322a', 0.6);
+  g.add(malla(caja(0.26, 0.015, 0.26), carton, [0, 0.0075, 0]));
+  const tapa = new THREE.Group(); tapa.position.set(-0.13, 0.015, 0); tapa.rotation.z = 1.35; g.add(tapa);
+  tapa.add(malla(caja(0.26, 0.01, 0.26), carton, [0.13, 0, 0]));
+  const hueco = Math.PI / 4;
+  g.add(malla(new THREE.CylinderGeometry(0.11, 0.11, 0.012, 28, 1, false, hueco, Math.PI * 2 - hueco), queso, [0, 0.022, 0]));
+  g.add(malla(new THREE.TorusGeometry(0.11, 0.012, 6, 28, Math.PI * 2 - hueco), borde, [0, 0.026, 0], [Math.PI / 2, 0, -hueco - Math.PI / 2]));
+  for (let i = 0; i < 7; i++) { const a = hueco + 0.4 + i * 0.75, r = 0.045 + (i % 2) * 0.03; g.add(malla(new THREE.CylinderGeometry(0.014, 0.014, 0.004, 12), peperoni, [Math.sin(a) * r, 0.03, Math.cos(a) * r])); }
+  const taj = new THREE.Group(); g.add(taj);
+  taj.add(malla(new THREE.CylinderGeometry(0.11, 0.11, 0.012, 8, 1, false, 0, hueco), queso));
+  taj.add(malla(new THREE.CylinderGeometry(0.014, 0.014, 0.004, 12), peperoni, [Math.sin(hueco / 2) * 0.07, 0.008, Math.cos(hueco / 2) * 0.07]));
+  const hilo = malla(new THREE.CylinderGeometry(0.003, 0.003, 1, 6), queso); g.add(hilo);
+  g.userData.animar = (t) => {
+    const k = 0.5 + 0.5 * Math.sin(t * 1.3);
+    taj.position.set(0.02 * k, 0.022 + 0.09 * k, 0.02 * k); taj.rotation.x = -0.5 * k;
+    hilo.scale.y = 0.005 + 0.09 * k; hilo.position.set(0.035, 0.026 + 0.045 * k, 0.03);
+  };
+  return g;
+}
+
+// «Mi pc gamer»: torre negra con vidrio y ventiladores RGB que cambian de color.
+function pcgamer() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.2, 0);
+  g.add(malla(caja(0.12, 0.26, 0.2, 0.01), mat('#16161c', 0.35, 0.5), [0, 0.13, 0]));
+  g.add(malla(caja(0.1, 0.22, 0.005), mat('#7fa0ff', 0.05, 0.2, { transparent: true, opacity: 0.25 }), [0, 0.13, 0.1025]));
+  const luces = [];
+  for (let i = 0; i < 3; i++) {
+    const m = new THREE.MeshBasicMaterial({ color: '#ff00ff', toneMapped: false }); luces.push(m);
+    g.add(malla(new THREE.TorusGeometry(0.03, 0.006, 6, 24), m, [0.061, 0.05 + i * 0.075, 0], [0, Math.PI / 2, 0]));
+    const aspas = new THREE.Group(); aspas.position.set(0.062, 0.05 + i * 0.075, 0); g.add(aspas); aspas.userData.aspa = true;
+    for (let k = 0; k < 4; k++) aspas.add(malla(caja(0.003, 0.024, 0.008), mat('#2a2a33', 0.5), [0, 0, 0], [k * Math.PI / 2, 0, 0.4]).translateY(0.013));
+  }
+  const tira = new THREE.MeshBasicMaterial({ color: '#00ffff', toneMapped: false }); luces.push(tira);
+  g.add(malla(caja(0.004, 0.24, 0.004), tira, [0.06, 0.13, 0.095]));
+  const aspas = g.children.filter((c) => c.userData.aspa);
+  g.userData.animar = (t) => {
+    luces.forEach((m, i) => m.color.setHSL((t * 0.25 + i * 0.12) % 1, 1, 0.55));
+    aspas.forEach((a, i) => { a.rotation.x = t * (14 + i); });
+  };
+  return g;
+}
+
+// «Una estrella de neutrones»: un púlsar en las manos (bolita blanca, aura azul, dos haces que giran y su campo magnético).
+function neutrones() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.3, 0);
+  const add = (c, o) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
+  g.add(malla(esfera(0.03, 16, 12), new THREE.MeshBasicMaterial({ color: '#f4f9ff', toneMapped: false })));
+  const aura = malla(esfera(0.065, 16, 12), add('#6fb0ff', 0.35)); g.add(aura);
+  const eje = new THREE.Group(); eje.rotation.z = 0.5; g.add(eje);
+  for (const s of [1, -1]) eje.add(malla(new THREE.ConeGeometry(0.035, 0.3, 16, 1, true), add('#9fe6ff', 0.4), [0, s * 0.16, 0], [s > 0 ? Math.PI : 0, 0, 0]));
+  for (const [rx, ry] of [[0, 0], [0, Math.PI / 3], [0, -Math.PI / 3]]) eje.add(malla(new THREE.TorusGeometry(0.08, 0.002, 4, 40), add('#7fc8ff', 0.6), [0.08, 0, 0], [rx, ry, 0], [1, 1.4, 1]).translateX(-0.08));
+  g.userData.animar = (t) => { eje.rotation.y = t * 7; const p = 1 + 0.25 * Math.max(0, Math.sin(t * 14)) ** 8; aura.scale.setScalar(p); };
+  return g;
+}
+
+// «Hola»: no dijo qué llevaba, así que lleva su «¡HOLA!» en un globo de diálogo sobre el casco.
+function hola() {
+  const g = new THREE.Group(); g.position.set(0.3, 1.1, 0.12);
+  const tex = textura(['¡HOLA!'], 512, 256, { fondo: '#ffffff', color: '#1a1a1a', tam: 0.7 });
+  g.add(malla(caja(0.014, 0.16, 0.32, 0.007), mat('#ffffff', 0.5)));
+  if (tex) for (const [x, ry] of [[0.0075, Math.PI / 2], [-0.0075, -Math.PI / 2]]) g.add(malla(new THREE.PlaneGeometry(0.29, 0.145), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }), [x, 0, 0], [0, ry, 0]));
+  g.add(malla(new THREE.ConeGeometry(0.03, 0.08, 4), mat('#ffffff', 0.5), [0, -0.11, -0.07], [0.5, 0, Math.PI], [0.4, 1, 1]));
+  g.userData.animar = (t) => { g.position.y = 1.1 + 0.015 * Math.sin(t * 2); g.rotation.x = Math.sin(t * 1.3) * 0.06; };
+  return g;
+}
+
+// «Un balón de fútbol 😛»: haciendo dominadas, sube y baja sobre la rodilla.
+function dominadas() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.2, 0);
+  const b = balon(); b.position.set(0, 0, 0); b.scale.setScalar(0.8); g.add(b);
+  g.userData.animar = (t) => { b.position.y = 0.06 + Math.abs(Math.sin(t * 3.2)) * 0.3; b.rotation.set(t * 4, 0, t * 2.5); };
+  return g;
+}
+
+// «Mi guitarra»: acústica, con cuerdas y clavijas, y notas que salen flotando.
+function guitarra() {
+  const g = new THREE.Group(); g.position.set(0.28, 0.25, 0);
+  const gui = musica(false); gui.position.set(0, 0, 0); g.add(gui);
+  const cuerda = mat('#e9e3d0', 0.3, 0.8);
+  for (let i = 0; i < 4; i++) gui.add(malla(caja(0.0015, 0.42, 0.0015), cuerda, [-0.009 + i * 0.006, 0.15, 0.03]));
+  gui.add(malla(caja(0.035, 0.06, 0.016, 0.004), mat('#2a1a0e', 0.6), [0, 0.375, 0]));
+  for (let i = 0; i < 4; i++) gui.add(malla(new THREE.CylinderGeometry(0.004, 0.004, 0.02, 6), mat('#d9d9d9', 0.3, 0.9), [i < 2 ? -0.022 : 0.022, 0.36 + (i % 2) * 0.025, 0], [0, 0, Math.PI / 2]));
+  gui.add(malla(new THREE.TorusGeometry(0.03, 0.003, 4, 20), mat('#e8b93a', 0.4, 0.6), [0, 0, 0.027]));
+  const notas = [];
+  for (let i = 0; i < 3; i++) {
+    const n = new THREE.Group(); g.add(n); notas.push(n);
+    const m = new THREE.MeshBasicMaterial({ color: ['#ffd23f', '#ff6a3d', '#7ff3ff'][i], transparent: true, toneMapped: false });
+    n.add(malla(esfera(0.016, 10, 8), m, [0, 0, 0], [0, 0, 0.4], [1.3, 0.9, 0.6]));
+    n.add(malla(caja(0.004, 0.06, 0.004), m, [0.018, 0.03, 0]));
+    n.add(malla(caja(0.004, 0.022, 0.004), m, [0.026, 0.055, 0], [0, 0, -0.9]));
+  }
+  g.userData.animar = (t) => notas.forEach((n, i) => {
+    const k = (t * 0.45 + i / 3) % 1;
+    n.position.set(0.04 + k * 0.05, 0.05 + k * 0.32, (i - 1) * 0.08 + Math.sin(t * 2 + i) * 0.03);
+    n.children.forEach((c) => { c.material.opacity = Math.min(1, (1 - k) * 2.5); });
+  });
+  return g;
+}
+
 const FABRICAS = {
+  perroastronauta, perrita, perrolanudo, gatocaja, gatoelegante, audifonostristes, airpods, parlante, nevera, selfie,
+  computadorcohete, pizza, pcgamer, neutrones, hola, dominadas, guitarra,
   gatos, gatofiesta, conejo, fugglers, estereoscopio, amiga, ramo, cartel,
   mordekaiser, camara, moto,
   fuego, gato: () => animal(false), perro: () => animal(true), celular, audifonos, computador, carro, cama, corazon,
@@ -643,7 +965,10 @@ const FABRICAS = {
 const LLAMA_ENCIMA = { camara: [0.3, 0.42, 0, 0.6], moto: [0.3, 0.38, 0, 0.6], computador: [0.32, 0.2, 0, 0.9], balon: [0.3, 0.33, 0, 0.75], bucaros: [0.3, 0.33, 0, 0.75], celular: [0.3, 0.47, 0.08, 0.5],
   carro: [0.3, 0.3, 0, 0.7], cama: [0.3, 0.26, 0, 0.8], libro: [0.3, 0.27, 0, 0.7], maleta: [0.3, 0.4, 0, 0.7], musica: [0.3, 0.32, 0, 0.6],
   audifonos: [0, 0.98, 0, 0.6], gato: [0.37, 0.45, 0, 0.5], perro: [0.37, 0.45, 0, 0.5], planta: [0.3, 0.38, 0, 0.6], comida: [0.3, 0.32, 0, 0.5],
-  corazon: [0.3, 0.45, 0, 0.6] };
+  corazon: [0.3, 0.45, 0, 0.6], parlante: [0.3, 0.37, 0, 0.8], nevera: [0.3, 0.33, 0, 0.75] };
+
+// Los que ya van a su medida (en la cabeza o flotando): no se agrandan.
+const SIN_ESCALA = new Set(['fuego', 'audifonos', 'mordekaiser', 'audifonostristes', 'airpods', 'hola']);
 
 // Tamaño caricatura: un poco más grandes que en la vida real, para que se vean desde la cámara.
 const TAMANO = 1.4;
@@ -657,7 +982,7 @@ export function crearObjeto(clave) {
   const anim = [];
   const o = f();
   // el fuego y los audífonos ya van a su medida; lo demás, más grande y un poco más arriba (se ve sobre las piernas)
-  if (a !== 'fuego' && a !== 'audifonos' && a !== 'mordekaiser') { o.scale.multiplyScalar(TAMANO); o.position.y += 0.08; }
+  if (!SIN_ESCALA.has(a)) { o.scale.multiplyScalar(TAMANO); o.position.y += 0.08; }
   g.add(o); if (o.userData.animar) anim.push(o.userData.animar);
   if (b === 'fuego' && a !== 'fuego') {
     const [x, y, z, k] = LLAMA_ENCIMA[a] || [0.3, 0.35, 0, 0.7];
