@@ -115,6 +115,42 @@ function carro() {
   return g;
 }
 
+// Moto eléctrica «Vainilla Cacao» (la de nazmend0za, 27-nov; foto de referencia: scooter blanco y negro con detalles
+// verde limón). De juguete, sobre las piernas con el frente hacia adelante (+x): desde «Verme sentado» se ve de perfil.
+// Se arma con el largo en z (atrás −z, adelante +z) y se gira. Sin marcas ni logos.
+function moto() {
+  const g = new THREE.Group(); g.position.set(0.36, 0.22, 0); g.rotation.y = Math.PI / 2;
+  const blanco = mat('#f5f5f2', 0.25, 0.05, { clearcoat: 0.8 }), negro = mat('#17181b', 0.45, 0.2), limon = mat('#c6f03c', 0.4, 0, { emissive: new THREE.Color('#3a4a08'), emissiveIntensity: 0.4 });
+  const llanta = mat('#121214', 0.85), metal = mat('#c8ccd4', 0.3, 0.9);
+  for (const z of [-0.13, 0.13]) {                                                       // ruedas negras con rayos
+    g.add(malla(new THREE.TorusGeometry(0.05, 0.02, 10, 24), llanta, [0, 0, z], [0, Math.PI / 2, 0]));
+    g.add(malla(new THREE.CylinderGeometry(0.034, 0.034, 0.022, 5), negro, [0, 0, z], [0, 0, Math.PI / 2]));
+    g.add(malla(new THREE.CylinderGeometry(0.012, 0.012, 0.03, 10), metal, [0, 0, z], [0, 0, Math.PI / 2]));
+  }
+  g.add(malla(caja(0.07, 0.03, 0.17, 0.012), negro, [0, 0.03, 0.0]));                   // piso negro
+  g.add(malla(caja(0.075, 0.07, 0.15, 0.025), negro, [0, 0.05, -0.1]));                  // motor / bajo de la cola
+  const cola = malla(caja(0.07, 0.06, 0.16, 0.025), blanco, [0, 0.105, -0.09], [-0.22, 0, 0]); g.add(cola);   // carenado blanco de la cola (sube atrás)
+  g.add(malla(caja(0.062, 0.025, 0.15, 0.012), negro, [0, 0.145, -0.07], [-0.08, 0, 0])); // asiento negro largo
+  g.add(malla(caja(0.074, 0.012, 0.09, 0.004), limon, [0, 0.09, -0.11], [-0.22, 0, 0]));  // franja verde limón
+  g.add(malla(caja(0.02, 0.02, 0.012, 0.004), mat('#e2262b', 0.3, 0, { emissive: new THREE.Color('#7a0a0a'), emissiveIntensity: 0.8 }), [0, 0.12, -0.17]));  // stop
+  // frente: escudo alto en punta (blanco arriba, negro abajo) y horquilla
+  g.add(malla(caja(0.068, 0.16, 0.045, 0.02), blanco, [0, 0.11, 0.105], [-0.3, 0, 0]));
+  g.add(malla(caja(0.07, 0.07, 0.048, 0.018), negro, [0, 0.055, 0.12], [-0.3, 0, 0]));
+  g.add(malla(caja(0.072, 0.03, 0.03, 0.008), limon, [0, 0.07, 0.137], [-0.3, 0, 0]));
+  g.add(malla(new THREE.CylinderGeometry(0.008, 0.008, 0.12, 8), negro, [0, 0.06, 0.15], [-0.3, 0, 0]));
+  g.add(malla(caja(0.05, 0.025, 0.05, 0.01), blanco, [0, 0.055, 0.15]));                  // salpicadera delantera
+  g.add(malla(new THREE.CylinderGeometry(0.007, 0.007, 0.13, 8), negro, [0, 0.215, 0.115], [0, 0, Math.PI / 2]));   // manubrio
+  for (const x of [-0.06, 0.06]) {
+    g.add(malla(new THREE.CylinderGeometry(0.011, 0.011, 0.028, 10), negro, [x, 0.215, 0.115], [0, 0, Math.PI / 2]));  // puños
+    g.add(malla(new THREE.CylinderGeometry(0.003, 0.003, 0.06, 6), negro, [x * 0.8, 0.25, 0.11]));                       // espejos
+    g.add(malla(caja(0.02, 0.012, 0.03, 0.005), negro, [x * 0.8, 0.282, 0.11]));
+  }
+  const farol = new THREE.MeshBasicMaterial({ color: '#fff6d8', toneMapped: false });
+  g.add(malla(caja(0.04, 0.014, 0.01, 0.004), farol, [0, 0.19, 0.137], [-0.3, 0, 0]));
+  g.userData.animar = (t) => { farol.color.setHSL(0.12, 1, 0.86 + 0.05 * Math.sin(t * 3)); };
+  return g;
+}
+
 function cama() {
   const g = new THREE.Group(); g.position.set(0.3, 0.17, 0);
   const madera = mat('#7b4a2a', 0.7);
@@ -425,14 +461,14 @@ function mordekaiser() {
 }
 
 const FABRICAS = {
-  mordekaiser, camara,
+  mordekaiser, camara, moto,
   fuego, gato: () => animal(false), perro: () => animal(true), celular, audifonos, computador, carro, cama, corazon,
   libro, comida, planta, musica, balon: () => balon(), bucaros: () => balon('#f7d117', '#127a3a'), maleta,
   mundo, herramientas, microfono, piano, lata, bajo: () => musica(true), oxigeno, zapatos, labial,
 };
 
 // Dónde va la llama cuando el objeto está prendido («computador+fuego», «balon+fuego»): encima del objeto.
-const LLAMA_ENCIMA = { camara: [0.3, 0.42, 0, 0.6], computador: [0.32, 0.2, 0, 0.9], balon: [0.3, 0.33, 0, 0.75], bucaros: [0.3, 0.33, 0, 0.75], celular: [0.3, 0.47, 0.08, 0.5],
+const LLAMA_ENCIMA = { camara: [0.3, 0.42, 0, 0.6], moto: [0.3, 0.38, 0, 0.6], computador: [0.32, 0.2, 0, 0.9], balon: [0.3, 0.33, 0, 0.75], bucaros: [0.3, 0.33, 0, 0.75], celular: [0.3, 0.47, 0.08, 0.5],
   carro: [0.3, 0.3, 0, 0.7], cama: [0.3, 0.26, 0, 0.8], libro: [0.3, 0.27, 0, 0.7], maleta: [0.3, 0.4, 0, 0.7], musica: [0.3, 0.32, 0, 0.6],
   audifonos: [0, 0.98, 0, 0.6], gato: [0.37, 0.45, 0, 0.5], perro: [0.37, 0.45, 0, 0.5], planta: [0.3, 0.38, 0, 0.6], comida: [0.3, 0.32, 0, 0.5],
   corazon: [0.3, 0.45, 0, 0.6] };
