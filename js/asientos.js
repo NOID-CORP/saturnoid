@@ -84,7 +84,7 @@ export const OBJETOS = {
   musica: 'Guitarra', balon: 'Balón', bucaros: 'Balón del Atlético Bucaramanga', maleta: 'Maleta',
   lata: 'Lata de energizante', bajo: 'Bajo eléctrico',
   mundo: 'El mundo entero', herramientas: 'Caja de herramientas', microfono: 'Micrófono dorado (cantantes)', piano: 'Piano de cola',
-  oxigeno: 'Tanque de oxígeno (con manguera al casco)',
+  oxigeno: 'Tanque de oxígeno (con manguera al casco)', zapatos: 'Par de tenis', labial: 'Tinta de labios',
 };
 // Dos claves con + (p. ej. «balon+fuego»): el objeto en llamas. La segunda solo puede ser fuego.
 export const OBJETO_VALIDO = /^[a-z]{1,20}(\+fuego)?$/;
@@ -104,6 +104,8 @@ export function adivinarObjeto(texto = '') {
     ['cama', /cama|almohada|cobija|🛏/u],
     ['piano', /piano|🎹/u],
     ['oxigeno', /oxigeno|tanque|bala de/u],
+    ['zapatos', /zapato|tenis|zapatilla|botas|👟|👠/u],
+    ['labial', /labial|tinta de labios|pintalabios|💄|💋/u],
     ['bajo', /\bbajo\b/u],
     ['lata', /red ?bull|monster|energizante|gaseosa|coca|cerveza|🥤|🍺/u],
     ['herramientas', /herramienta|martillo|taladro|🔧|🛠/u],

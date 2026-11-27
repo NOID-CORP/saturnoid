@@ -276,6 +276,38 @@ function oxigeno() {
   return g;
 }
 
+// Un par de tenis en las manos (por si en Saturnoid hay dónde caminar): negros con suela blanca y franja naranja
+// (blancos se perdían contra el traje).
+function zapatos() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.2, 0);
+  const suela = mat('#f2f0ea', 0.7), tela = mat('#23232b', 0.6), franja = mat('#ff6a3d', 0.5), cordon = mat('#f4f4f0', 0.6);
+  for (const z of [-0.075, 0.075]) {
+    const s = new THREE.Group(); s.position.set(0, 0, z); s.rotation.y = z > 0 ? -0.12 : 0.12; g.add(s);
+    s.add(malla(caja(0.24, 0.035, 0.085, 0.015), suela, [0, 0.018, 0]));
+    s.add(malla(caja(0.17, 0.07, 0.078, 0.03), tela, [-0.025, 0.07, 0]));
+    s.add(malla(esfera(0.042, 14, 10), tela, [0.07, 0.05, 0], [0, 0, 0], [1.3, 0.75, 0.95]));   // punta
+    s.add(malla(caja(0.1, 0.02, 0.081, 0.008), franja, [-0.02, 0.06, 0], [0, 0, 0.35]));
+    s.add(malla(new THREE.CylinderGeometry(0.036, 0.036, 0.03, 16), tela, [-0.075, 0.11, 0]));  // cuello del tenis
+    for (let k = 0; k < 3; k++) s.add(malla(caja(0.008, 0.006, 0.05), cordon, [0.0 + k * 0.025, 0.106 - k * 0.008, 0], [0, 0, -0.3]));
+  }
+  return g;
+}
+
+// Su infaltable: una tinta de labios roja, destapada y lista (la tapa en la otra mano). Brilla un poco.
+function labial() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.28, 0.08); g.rotation.set(0.2, 0, -0.35);
+  const oro = mat('#e8b93a', 0.25, 0.9), rojo = mat('#c8102e', 0.25, 0.1);
+  g.add(malla(new THREE.CylinderGeometry(0.024, 0.024, 0.09, 20), oro, [0, 0, 0]));
+  g.add(malla(new THREE.CylinderGeometry(0.026, 0.026, 0.012, 20), mat('#1a1a1a', 0.4), [0, 0.04, 0]));
+  g.add(malla(new THREE.CylinderGeometry(0.018, 0.018, 0.05, 20), rojo, [0, 0.07, 0]));
+  const punta = malla(new THREE.CylinderGeometry(0.0, 0.018, 0.03, 20, 1, false), rojo, [0.005, 0.108, 0], [0, 0, -0.5], [1, 1, 0.9]); g.add(punta);
+  g.add(malla(new THREE.CylinderGeometry(0.026, 0.026, 0.075, 20), oro, [0.02, -0.02, -0.17], [0, 0, 0.5]));   // la tapa, en la otra mano
+  const brillo = new THREE.MeshBasicMaterial({ color: '#ff5470', transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  g.add(malla(esfera(0.045, 10, 8), brillo, [0, 0.09, 0]));
+  g.userData.animar = (t) => { brillo.opacity = 0.15 + 0.12 * Math.max(0, Math.sin(t * 3.5)); };
+  return g;
+}
+
 // Piano de cola entero… en las piernas, con el teclado hacia afuera (toca para el público).
 function piano() {
   const g = new THREE.Group(); g.position.set(0.3, 0.17, 0); g.rotation.y = Math.PI;
@@ -299,7 +331,7 @@ function piano() {
 const FABRICAS = {
   fuego, gato: () => animal(false), perro: () => animal(true), celular, audifonos, computador, carro, cama, corazon,
   libro, comida, planta, musica, balon: () => balon(), bucaros: () => balon('#f7d117', '#127a3a'), maleta,
-  mundo, herramientas, microfono, piano, lata, bajo: () => musica(true), oxigeno,
+  mundo, herramientas, microfono, piano, lata, bajo: () => musica(true), oxigeno, zapatos, labial,
 };
 
 // Dónde va la llama cuando el objeto está prendido («computador+fuego», «balon+fuego»): encima del objeto.
