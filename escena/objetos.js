@@ -328,14 +328,111 @@ function piano() {
   return g;
 }
 
+// Cámara de fotos réflex en las manos, con el lente hacia afuera (para el que se lleva su cámara).
+function camara() {
+  const g = new THREE.Group(); g.position.set(0.3, 0.3, 0);
+  const negro = mat('#1c1c20', 0.45, 0.2), metal = mat('#c8ccd4', 0.3, 0.9);
+  g.add(malla(caja(0.08, 0.1, 0.17, 0.015), negro));                                                  // cuerpo
+  g.add(malla(caja(0.06, 0.04, 0.06, 0.01), negro, [-0.005, 0.065, 0]));                               // visor
+  g.add(malla(new THREE.CylinderGeometry(0.04, 0.042, 0.07, 22), negro, [0.07, 0, 0], [0, 0, Math.PI / 2]));   // lente
+  g.add(malla(new THREE.TorusGeometry(0.041, 0.005, 6, 22), metal, [0.105, 0, 0], [0, Math.PI / 2, 0]));
+  g.add(malla(new THREE.CircleGeometry(0.032, 22), mat('#1d3550', 0.05, 0.9), [0.106, 0, 0], [0, Math.PI / 2, 0]));
+  g.add(malla(new THREE.CylinderGeometry(0.01, 0.01, 0.012, 12), mat('#c8312b', 0.4), [0, 0.056, 0.06]));       // disparador
+  const flash = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  g.add(malla(esfera(0.06, 10, 8), flash, [0.02, 0.07, 0]));
+  g.userData.animar = (t) => { const k = (t % 4.5) / 4.5; flash.opacity = k < 0.025 ? 0.9 : 0; };    // un flash cada 4,5 s
+  return g;
+}
+
+// Mordekaiser (League of Legends) en versión tierna, para @manutegaming: la armadura va encima del traje del pasajero.
+// Lo que lo hace reconocible (comparado con la imagen del juego que mandó DON, 27-nov): acero verde azulado, yelmo alto
+// con dos cuernos de cuchilla y ojos turquesa, hombreras enormes con cuchillas curvas, líneas turquesa en el peto,
+// faldón rojo oscuro con punta en zigzag, guanteletes con garras y la maza Nightfall con fuego turquesa. No es un objeto en las piernas: es el disfraz
+// entero, por eso no se escala con TAMANO (las piezas ya van a la medida del pasajero: casco en (0, 0.76, 0), r 0,17).
+function mordekaiser() {
+  const g = new THREE.Group();
+  // acero verde azulado (no negro) con brillo turquesa, como el de League of Legends
+  const acero = mat('#22302f', 0.3, 0.85), acero2 = mat('#36494a', 0.26, 0.9), filo = mat('#9fb7b4', 0.2, 0.95);
+  const brilla = new THREE.MeshBasicMaterial({ color: '#3ff2d6', toneMapped: false });
+  const halo = () => new THREE.MeshBasicMaterial({ color: '#2fe8cf', transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  const rojo = mat('#5c1220', 0.75, 0.05, { side: THREE.DoubleSide });
+  const cuchilla = (ancho, alto, grueso = 0.03) => {   // cuña afilada (para cuernos, púas grandes y garras)
+    const s = new THREE.Shape(); s.moveTo(-ancho / 2, 0); s.quadraticCurveTo(-ancho * 0.1, alto * 0.55, ancho * 0.12, alto); s.quadraticCurveTo(ancho * 0.18, alto * 0.45, ancho / 2, 0); s.lineTo(-ancho / 2, 0);
+    const geo = new THREE.ExtrudeGeometry(s, { depth: grueso, bevelEnabled: true, bevelSize: 0.008, bevelThickness: 0.008, bevelSegments: 1, curveSegments: 6 }); geo.translate(0, 0, -grueso / 2); return geo;
+  };
+  // ── casco: yelmo alto y anguloso con dos cuernos de cuchilla y la ranura turquesa ──
+  const casco = new THREE.Group(); casco.name = 'casco'; casco.position.set(0, 0.78, 0); g.add(casco);
+  casco.add(malla(esfera(0.19, 24, 18), acero, [0, 0, 0], [0, 0, 0], [1, 1.12, 0.95]));
+  casco.add(malla(new THREE.ConeGeometry(0.2, 0.2, 4), acero2, [0.02, 0.17, 0], [0, Math.PI / 4, 0], [1, 1, 0.8]));   // cresta en punta
+  casco.add(malla(new THREE.SphereGeometry(0.185, 20, 12, -Math.PI * 0.3, Math.PI * 0.6, Math.PI * 0.42, Math.PI * 0.3), mat('#0b1112', 0.4, 0.6), [0.012, 0, 0], [0, Math.PI / 2, 0], [1, 1.12, 0.95]));  // la sombra de la cara
+  casco.add(malla(new THREE.ConeGeometry(0.035, 0.16, 4), acero2, [0.19, 0.07, 0], [0, Math.PI / 4, 0]));               // nasal
+  for (const z of [-1, 1]) {
+    casco.add(malla(cuchilla(0.1, 0.34), acero2, [-0.02, 0.16, z * 0.11], [0, 0, z * 0.0], [1, 1, 1]).rotateX(-z * 0.25));   // cuernos
+    casco.add(malla(cuchilla(0.07, 0.14, 0.02), acero2, [0.1, -0.12, z * 0.15], [Math.PI, 0, 0]).rotateY(z * 0.6));      // mentón en punta
+  }
+  // la ranura: ojos turquesa en una T delgada (la cara no se ve: solo la luz)
+  const ojos = new THREE.Group(); ojos.position.set(0.198, 0.0, 0); ojos.rotation.y = Math.PI / 2; casco.add(ojos);
+  for (const z of [-1, 1]) ojos.add(malla(new THREE.PlaneGeometry(0.06, 0.016), brilla, [z * 0.04, 0.02, 0], [0, 0, z * -0.25]));
+  ojos.add(malla(new THREE.PlaneGeometry(0.012, 0.08), brilla, [0, -0.03, 0]));
+  const haloO = halo(); ojos.add(malla(new THREE.CircleGeometry(0.06, 20), haloO, [0, 0.0, 0.003], [0, 0, 0], [1.4, 0.8, 1]));
+  // ── peto anguloso con las líneas turquesa en curva y el faldón rojo ──
+  g.add(malla(caja(0.3, 0.38, 0.44, 0.08), acero, [-0.01, 0.37, 0], [0, 0, 0.1]));
+  g.add(malla(new THREE.ConeGeometry(0.16, 0.2, 4), acero2, [0.12, 0.46, 0], [0, Math.PI / 4, -Math.PI / 2 + 0.1], [1, 1, 0.5]));  // quilla
+  for (const z of [-1, 1]) {
+    const c = malla(new THREE.TorusGeometry(0.1, 0.009, 6, 20, Math.PI * 0.75), brilla, [0.155, 0.4, z * 0.08], [0, Math.PI / 2, z > 0 ? -0.4 : Math.PI + 0.4]); g.add(c);
+  }
+  const gema = malla(new THREE.OctahedronGeometry(0.03), brilla, [0.17, 0.5, 0]); g.add(gema);
+  g.add(malla(caja(0.2, 0.06, 0.46, 0.02), acero2, [-0.01, 0.15, 0]));                      // cinturón
+  // faldón: dos tiras rojas con la punta en zigzag, adelante, colgando hasta las rodillas
+  const sF = new THREE.Shape(); sF.moveTo(-0.12, 0); sF.lineTo(0.12, 0); sF.lineTo(0.1, -0.26); sF.lineTo(0.05, -0.2); sF.lineTo(0, -0.32); sF.lineTo(-0.05, -0.2); sF.lineTo(-0.1, -0.26); sF.lineTo(-0.12, 0);
+  const faldon = malla(new THREE.ShapeGeometry(sF), rojo, [0.12, 0.13, 0], [0, Math.PI / 2, 0]); g.add(faldon);
+  // ── hombreras enormes con tres cuchillas curvas hacia arriba y afuera ──
+  for (const z of [-1, 1]) {
+    const h = new THREE.Group(); h.position.set(-0.02, 0.58, z * 0.27); g.add(h);
+    h.add(malla(esfera(0.13, 16, 12), acero, [0, 0, 0], [0, 0, 0], [1.1, 0.75, 1]));
+    h.add(malla(caja(0.26, 0.05, 0.2, 0.02), acero2, [0, -0.06, z * 0.03], [z * 0.3, 0, 0]));
+    for (let k = 0; k < 3; k++) {
+      const b = malla(cuchilla(0.13, 0.28 + (k === 1 ? 0.1 : 0)), acero2, [(k - 1) * 0.09, 0.05, z * 0.07]);
+      b.rotation.set(z * (0.6 + k * 0.1), Math.PI / 2, 0); h.add(b);
+    }
+    h.add(malla(new THREE.TorusGeometry(0.11, 0.008, 6, 20, Math.PI), brilla, [0, -0.02, z * 0.02], [Math.PI / 2, 0, 0]));
+  }
+  // ── guanteletes con garras ──
+  for (const z of [-0.23, 0.23]) {
+    g.add(malla(caja(0.13, 0.11, 0.12, 0.03), acero, [0.25, 0.18, z]));
+    for (const d of [-0.035, 0, 0.035]) g.add(malla(new THREE.ConeGeometry(0.012, 0.06, 6), filo, [0.33, 0.15, z + d], [0, 0, -Math.PI / 2 - 0.3]));
+    g.add(malla(cuchilla(0.05, 0.08, 0.02), acero2, [0.22, 0.24, z], [0, Math.PI / 2, 0]));
+  }
+  // ── la maza Nightfall: mango largo, cabeza con aletas y fuego turquesa (hacia afuera: no tapa la cara) ──
+  const maza = new THREE.Group(); maza.position.set(0.27, 0.18, 0.25); maza.rotation.set(0.62, 0, -0.12); g.add(maza);
+  maza.add(malla(new THREE.CylinderGeometry(0.017, 0.017, 0.74, 10), acero2, [0, 0.3, 0]));
+  for (const y of [0.12, 0.5]) maza.add(malla(new THREE.CylinderGeometry(0.024, 0.024, 0.04, 10), brilla, [0, y, 0]));
+  const cabeza = new THREE.Group(); cabeza.position.set(0, 0.74, 0); maza.add(cabeza);
+  cabeza.add(malla(new THREE.CylinderGeometry(0.06, 0.07, 0.16, 8), acero));
+  for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2; const f = malla(cuchilla(0.12, 0.08, 0.02), acero2, [Math.cos(a) * 0.06, -0.06, Math.sin(a) * 0.06]); f.rotation.set(0, -a, -Math.PI / 2); cabeza.add(f); }
+  cabeza.add(malla(new THREE.ConeGeometry(0.04, 0.12, 6), filo, [0, 0.13, 0]));
+  const haloM = halo(); cabeza.add(malla(esfera(0.1, 14, 10), haloM));
+  const fuegoVerde = new THREE.Group(); fuegoVerde.position.y = 0.04; cabeza.add(fuegoVerde);
+  for (const [color, alto, ancho, op] of [['#18d6b4', 0.22, 0.07, 0.8], ['#7dfbe6', 0.14, 0.045, 0.9], ['#eafffb', 0.07, 0.022, 1]]) fuegoVerde.add(malla(gota(alto, ancho), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })));
+  g.userData.animar = (tt) => {
+    const k = 0.5 + 0.5 * Math.sin(tt * 2.4);
+    haloO.opacity = 0.12 + 0.12 * k; haloM.opacity = 0.14 + 0.18 * k; gema.scale.setScalar(1 + 0.18 * k); gema.rotation.y = tt;
+    const f = Math.sin(tt * 11) * 0.5 + Math.sin(tt * 17.3) * 0.3;
+    fuegoVerde.scale.set(1 - f * 0.08, 1 + f * 0.2, 1 - f * 0.08); fuegoVerde.rotation.y = tt * 1.5;
+    faldon.rotation.z = Math.sin(tt * 1.7) * 0.06;
+  };
+  return g;
+}
+
 const FABRICAS = {
+  mordekaiser, camara,
   fuego, gato: () => animal(false), perro: () => animal(true), celular, audifonos, computador, carro, cama, corazon,
   libro, comida, planta, musica, balon: () => balon(), bucaros: () => balon('#f7d117', '#127a3a'), maleta,
   mundo, herramientas, microfono, piano, lata, bajo: () => musica(true), oxigeno, zapatos, labial,
 };
 
 // Dónde va la llama cuando el objeto está prendido («computador+fuego», «balon+fuego»): encima del objeto.
-const LLAMA_ENCIMA = { computador: [0.32, 0.2, 0, 0.9], balon: [0.3, 0.33, 0, 0.75], bucaros: [0.3, 0.33, 0, 0.75], celular: [0.3, 0.47, 0.08, 0.5],
+const LLAMA_ENCIMA = { camara: [0.3, 0.42, 0, 0.6], computador: [0.32, 0.2, 0, 0.9], balon: [0.3, 0.33, 0, 0.75], bucaros: [0.3, 0.33, 0, 0.75], celular: [0.3, 0.47, 0.08, 0.5],
   carro: [0.3, 0.3, 0, 0.7], cama: [0.3, 0.26, 0, 0.8], libro: [0.3, 0.27, 0, 0.7], maleta: [0.3, 0.4, 0, 0.7], musica: [0.3, 0.32, 0, 0.6],
   audifonos: [0, 0.98, 0, 0.6], gato: [0.37, 0.45, 0, 0.5], perro: [0.37, 0.45, 0, 0.5], planta: [0.3, 0.38, 0, 0.6], comida: [0.3, 0.32, 0, 0.5],
   corazon: [0.3, 0.45, 0, 0.6] };
@@ -352,7 +449,7 @@ export function crearObjeto(clave) {
   const anim = [];
   const o = f();
   // el fuego y los audífonos ya van a su medida; lo demás, más grande y un poco más arriba (se ve sobre las piernas)
-  if (a !== 'fuego' && a !== 'audifonos') { o.scale.multiplyScalar(TAMANO); o.position.y += 0.08; }
+  if (a !== 'fuego' && a !== 'audifonos' && a !== 'mordekaiser') { o.scale.multiplyScalar(TAMANO); o.position.y += 0.08; }
   g.add(o); if (o.userData.animar) anim.push(o.userData.animar);
   if (b === 'fuego' && a !== 'fuego') {
     const [x, y, z, k] = LLAMA_ENCIMA[a] || [0.3, 0.35, 0, 0.7];

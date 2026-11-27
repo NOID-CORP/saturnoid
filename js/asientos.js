@@ -85,6 +85,7 @@ export const OBJETOS = {
   lata: 'Lata de energizante', bajo: 'Bajo eléctrico',
   mundo: 'El mundo entero', herramientas: 'Caja de herramientas', microfono: 'Micrófono dorado (cantantes)', piano: 'Piano de cola',
   oxigeno: 'Tanque de oxígeno (con manguera al casco)', zapatos: 'Par de tenis', labial: 'Tinta de labios',
+  mordekaiser: 'Disfraz de Mordekaiser (League of Legends) con su maza', camara: 'Cámara de fotos',
 };
 // Dos claves con + (p. ej. «balon+fuego»): el objeto en llamas. La segunda solo puede ser fuego.
 export const OBJETO_VALIDO = /^[a-z]{1,20}(\+fuego)?$/;
@@ -97,6 +98,7 @@ export function adivinarObjeto(texto = '') {
     ['fuego', /🔥|fuego|candela/u],
     ['gato', /gat[oia]|michi|🐱|🐈/u],
     ['perro', /perr[oia]|mascota|lomito|🐕|🐶/u],
+    ['camara', /camara|📸|📷/u],
     ['celular', /celu|telefono|movil|iphone|📱/u],
     ['audifonos', /audifono|aud[ií]fonos|airpods|cascos|🎧/u],
     ['computador', /computa|portatil|laptop|pc\b|💻/u],
@@ -116,7 +118,8 @@ export function adivinarObjeto(texto = '') {
     ['balon', /balon|pelota|futbol|⚽|🏀/u],
     ['planta', /planta|flor|🌱|🌻|🌹/u],
     ['comida', /comida|pizza|cafe|arepa|empanada|chocolate|🍕|☕/u],
-    ['corazon', /\b(llevo|me llevo|traigo) a\b|novi[oa]|mama|papa|herman|amig|❤|💕/u],
+    ['mordekaiser', /mordekaiser/u],
+    ['corazon', /\b(llevo|me llevo|traigo) a\b|novi[oa]|pareja|mama|papa|herman|amig|❤|💕/u],
   ];
   for (const [clave, re] of reglas) if (re.test(t)) return clave;
   return 'maleta';
